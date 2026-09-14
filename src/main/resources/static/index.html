@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PeerNest - Temporary Frontend</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="brand">PeerNest</div>
+    <div id="userInfo">Not logged in</div>
+    <button id="logoutBtn" class="secondary hidden">Logout</button>
+  </header>
+
+  <main>
+    <section id="loginCard" class="card">
+      <h1>PeerNest</h1>
+      <p class="muted">Temporary testing frontend for your Spring Boot backend.</p>
+      <div class="grid2">
+        <label>Email
+          <input id="email" type="email" value="instructor@gmail.com">
+        </label>
+        <label>Password
+          <input id="password" type="password" value="12345678">
+        </label>
+      </div>
+      <div class="actions">
+        <button id="loginBtn">Login</button>
+        <button id="studentFill" class="secondary">Use Student</button>
+        <button id="instructorFill" class="secondary">Use Instructor</button>
+      </div>
+      <div id="loginStatus" class="status"></div>
+    </section>
+
+    <section id="app" class="hidden">
+      <div class="tabs">
+        <button data-tab="courses" class="tab active">Courses</button>
+        <button data-tab="instructor" class="tab instructor-only">Instructor</button>
+        <button data-tab="student" class="tab student-only">Student</button>
+      </div>
+
+      <section id="coursesTab" class="tabPanel">
+        <div class="card">
+          <div class="row between">
+            <div>
+              <h2>Published Courses</h2>
+              <p class="muted">Public course browsing.</p>
+            </div>
+            <button id="refreshCourses" class="secondary">Refresh</button>
+          </div>
+          <div id="coursesList" class="courseList"></div>
+        </div>
+      </section>
+
+      <section id="instructorTab" class="tabPanel hidden">
+        <div class="grid2">
+          <div class="card">
+            <h2>Create Section</h2>
+            <label>Title
+              <input id="sectionTitle" value="Java Basics">
+            </label>
+            <label>Description
+              <textarea id="sectionDescription">Learn the fundamentals of Java</textarea>
+            </label>
+            <label>Section Order
+              <input id="sectionOrder" type="number" value="1">
+            </label>
+            <label>Course ID
+              <input id="sectionCourseId" type="number" value="1">
+            </label>
+            <button id="createSectionBtn">Create Section</button>
+            <div id="sectionStatus" class="status"></div>
+          </div>
+
+          <div class="card">
+            <h2>Create Lecture</h2>
+            <label>Title
+              <input id="lectureTitle" value="Introduction to Java">
+            </label>
+            <label>Description
+              <textarea id="lectureDescription">Learn what Java is and how Java works</textarea>
+            </label>
+            <label>Duration (minutes)
+              <input id="lectureDuration" type="number" value="20">
+            </label>
+            <label>Lecture Order
+              <input id="lectureOrder" type="number" value="1">
+            </label>
+            <label>Section ID
+              <input id="lectureSectionId" type="number" value="1">
+            </label>
+            <label class="checkbox">
+              <input id="freePreview" type="checkbox" checked>
+              Free preview
+            </label>
+            <button id="createLectureBtn">Create Lecture</button>
+            <div id="lectureStatus" class="status"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Upload Video</h2>
+          <p class="muted">Uploads the selected MP4 to your backend Cloudinary endpoint.</p>
+          <label>Video file
+            <input id="videoFile" type="file" accept="video/*">
+          </label>
+          <button id="uploadVideoBtn">Upload Video</button>
+          <div id="uploadStatus" class="status"></div>
+          <pre id="uploadResult" class="result hidden"></pre>
+        </div>
+      </section>
+
+      <section id="studentTab" class="tabPanel hidden">
+        <div class="card">
+          <h2>My Enrollments</h2>
+          <button id="refreshEnrollments" class="secondary">Refresh</button>
+          <div id="enrollmentList"></div>
+        </div>
+
+        <div class="card">
+          <h2>Learning Progress</h2>
+          <div class="grid2">
+            <label>Course ID
+              <input id="progressCourseId" type="number" value="1">
+            </label>
+            <label>Lecture ID to complete
+              <input id="progressLectureId" type="number" value="1">
+            </label>
+          </div>
+          <div class="actions">
+            <button id="completeLectureBtn">Mark Lecture Complete</button>
+            <button id="getProgressBtn" class="secondary">Get Progress</button>
+          </div>
+          <div id="progressStatus" class="status"></div>
+          <div id="progressBox"></div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>
