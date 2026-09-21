@@ -1,145 +1,680 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PeerNest - Temporary Frontend</title>
-  <link rel="stylesheet" href="style.css">
+
+  <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>PeerNest</title>
+
+  <link
+          rel="stylesheet"
+          href="style.css"
+  >
+
 </head>
+
+
 <body>
-  <header>
-    <div class="brand">PeerNest</div>
-    <div id="userInfo">Not logged in</div>
-    <button id="logoutBtn" class="secondary hidden">Logout</button>
-  </header>
 
-  <main>
-    <section id="loginCard" class="card">
-      <h1>PeerNest</h1>
-      <p class="muted">Temporary testing frontend for your Spring Boot backend.</p>
-      <div class="grid2">
-        <label>Email
-          <input id="email" type="email" value="instructor@gmail.com">
+
+<!-- =========================================================
+     NAVBAR
+     ========================================================= -->
+
+<header class="navbar">
+
+  <div class="navbar-inner">
+
+    <div class="logo">
+      PeerNest
+    </div>
+
+    <div class="nav-right">
+
+            <span id="currentUser">
+                Not logged in
+            </span>
+
+      <button
+              id="logoutBtn"
+              type="button"
+              style="display:none;"
+      >
+        Logout
+      </button>
+
+    </div>
+
+  </div>
+
+</header>
+
+
+<!-- =========================================================
+     AUTH SECTION
+     ========================================================= -->
+
+<section
+        id="authSection"
+        class="page-section"
+>
+
+  <div class="auth-container">
+
+
+    <!-- LOGIN -->
+
+    <div class="auth-card">
+
+      <h2>Login</h2>
+
+      <p class="muted">
+        Login to your PeerNest account
+      </p>
+
+
+      <form id="loginForm">
+
+        <label for="loginEmail">
+          Email
         </label>
-        <label>Password
-          <input id="password" type="password" value="12345678">
+
+        <input
+                type="email"
+                id="loginEmail"
+                placeholder="Enter your email"
+                required
+        >
+
+
+        <label for="loginPassword">
+          Password
         </label>
+
+        <input
+                type="password"
+                id="loginPassword"
+                placeholder="Enter your password"
+                required
+        >
+
+
+        <button
+                type="submit"
+                class="primary-btn"
+        >
+          Login
+        </button>
+
+      </form>
+
+    </div>
+
+
+
+    <!-- REGISTER -->
+
+    <div class="auth-card">
+
+      <h2>Create Account</h2>
+
+      <p class="muted">
+        Join PeerNest
+      </p>
+
+
+      <form id="registerForm">
+
+        <label for="registerName">
+          Name
+        </label>
+
+        <input
+                type="text"
+                id="registerName"
+                placeholder="Your name"
+                required
+        >
+
+
+        <label for="registerEmail">
+          Email
+        </label>
+
+        <input
+                type="email"
+                id="registerEmail"
+                placeholder="Your email"
+                required
+        >
+
+
+        <label for="registerPassword">
+          Password
+        </label>
+
+        <input
+                type="password"
+                id="registerPassword"
+                placeholder="Create password"
+                required
+        >
+
+
+        <label for="registerRole">
+          Role
+        </label>
+
+        <select id="registerRole">
+
+          <option value="STUDENT">
+            Student
+          </option>
+
+          <option value="INSTRUCTOR">
+            Instructor
+          </option>
+
+        </select>
+
+
+        <button
+                type="submit"
+                class="primary-btn"
+        >
+          Register
+        </button>
+
+      </form>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+
+<!-- =========================================================
+     MAIN APPLICATION
+     ========================================================= -->
+
+<main
+        id="appSection"
+        style="display:none;"
+>
+
+
+  <!-- =========================================================
+       COURSE LIST
+       ========================================================= -->
+
+  <section class="page-section">
+
+    <div class="section-header">
+
+      <div>
+
+        <h1>Courses</h1>
+
+        <p class="muted">
+          Explore courses available on PeerNest.
+        </p>
+
       </div>
-      <div class="actions">
-        <button id="loginBtn">Login</button>
-        <button id="studentFill" class="secondary">Use Student</button>
-        <button id="instructorFill" class="secondary">Use Instructor</button>
+
+    </div>
+
+
+    <div
+            id="courseContainer"
+            class="course-grid"
+    >
+
+      <p class="loading-message">
+        Loading courses...
+      </p>
+
+    </div>
+
+  </section>
+
+
+
+  <!-- =========================================================
+       STUDENT COURSE PLAYER
+       ========================================================= -->
+
+  <section
+          id="studentPlayerSection"
+          class="page-section"
+          style="display:none;"
+  >
+
+
+    <div class="player-header">
+
+      <button
+              id="closePlayerBtn"
+              type="button"
+              class="secondary-btn"
+      >
+        ← Back to Courses
+      </button>
+
+
+      <div>
+
+        <h1 id="studentCourseTitle">
+          Course
+        </h1>
+
+        <p
+                id="studentCourseDescription"
+                class="muted"
+        ></p>
+
       </div>
-      <div id="loginStatus" class="status"></div>
-    </section>
 
-    <section id="app" class="hidden">
-      <div class="tabs">
-        <button data-tab="courses" class="tab active">Courses</button>
-        <button data-tab="instructor" class="tab instructor-only">Instructor</button>
-        <button data-tab="student" class="tab student-only">Student</button>
+    </div>
+
+
+
+    <div class="student-player-container">
+
+
+      <!-- =================================================
+           VIDEO
+           ================================================= -->
+
+      <div class="student-video-area">
+
+        <div class="video-wrapper">
+
+          <video
+                  id="studentVideoPlayer"
+                  controls
+                  preload="metadata"
+          >
+            Your browser does not support video
+            playback.
+          </video>
+
+        </div>
+
+
+        <div class="lecture-information">
+
+          <h2 id="studentLectureTitle">
+            Select a lecture
+          </h2>
+
+
+          <p id="studentLectureDescription">
+            Choose a lecture from the curriculum.
+          </p>
+
+
+          <div class="lecture-meta">
+
+                    <span id="studentLectureDuration">
+                        Duration: --
+                    </span>
+
+
+            <span id="studentLecturePreview">
+                        --
+                    </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="lecture-navigation">
+
+          <button
+                  id="previousLectureBtn"
+                  type="button"
+                  disabled
+          >
+            ← Previous
+          </button>
+
+
+          <button
+                  id="nextLectureBtn"
+                  type="button"
+                  disabled
+          >
+            Next →
+          </button>
+
+        </div>
+
       </div>
 
-      <section id="coursesTab" class="tabPanel">
-        <div class="card">
-          <div class="row between">
-            <div>
-              <h2>Published Courses</h2>
-              <p class="muted">Public course browsing.</p>
-            </div>
-            <button id="refreshCourses" class="secondary">Refresh</button>
-          </div>
-          <div id="coursesList" class="courseList"></div>
-        </div>
-      </section>
 
-      <section id="instructorTab" class="tabPanel hidden">
-        <div class="grid2">
-          <div class="card">
-            <h2>Create Section</h2>
-            <label>Title
-              <input id="sectionTitle" value="Java Basics">
-            </label>
-            <label>Description
-              <textarea id="sectionDescription">Learn the fundamentals of Java</textarea>
-            </label>
-            <label>Section Order
-              <input id="sectionOrder" type="number" value="1">
-            </label>
-            <label>Course ID
-              <input id="sectionCourseId" type="number" value="1">
-            </label>
-            <button id="createSectionBtn">Create Section</button>
-            <div id="sectionStatus" class="status"></div>
-          </div>
 
-          <div class="card">
-            <h2>Create Lecture</h2>
-            <label>Title
-              <input id="lectureTitle" value="Introduction to Java">
-            </label>
-            <label>Description
-              <textarea id="lectureDescription">Learn what Java is and how Java works</textarea>
-            </label>
-            <label>Duration (minutes)
-              <input id="lectureDuration" type="number" value="20">
-            </label>
-            <label>Lecture Order
-              <input id="lectureOrder" type="number" value="1">
-            </label>
-            <label>Section ID
-              <input id="lectureSectionId" type="number" value="1">
-            </label>
-            <label class="checkbox">
-              <input id="freePreview" type="checkbox" checked>
-              Free preview
-            </label>
-            <button id="createLectureBtn">Create Lecture</button>
-            <div id="lectureStatus" class="status"></div>
-          </div>
+      <!-- =================================================
+           CURRICULUM
+           ================================================= -->
+
+      <div class="student-curriculum">
+
+        <div class="curriculum-header">
+
+          <h2>
+            Course Content
+          </h2>
+
+
+          <p id="studentCourseProgress">
+            Select a lecture
+          </p>
+
         </div>
 
-        <div class="card">
-          <h2>Upload Video</h2>
-          <p class="muted">Uploads the selected MP4 to your backend Cloudinary endpoint.</p>
-          <label>Video file
-            <input id="videoFile" type="file" accept="video/*">
-          </label>
-          <button id="uploadVideoBtn">Upload Video</button>
-          <div id="uploadStatus" class="status"></div>
-          <pre id="uploadResult" class="result hidden"></pre>
-        </div>
-      </section>
 
-      <section id="studentTab" class="tabPanel hidden">
-        <div class="card">
-          <h2>My Enrollments</h2>
-          <button id="refreshEnrollments" class="secondary">Refresh</button>
-          <div id="enrollmentList"></div>
+        <div id="studentSectionsContainer">
+
+          <p class="loading-message">
+            Loading course content...
+          </p>
+
         </div>
 
-        <div class="card">
-          <h2>Learning Progress</h2>
-          <div class="grid2">
-            <label>Course ID
-              <input id="progressCourseId" type="number" value="1">
-            </label>
-            <label>Lecture ID to complete
-              <input id="progressLectureId" type="number" value="1">
-            </label>
-          </div>
-          <div class="actions">
-            <button id="completeLectureBtn">Mark Lecture Complete</button>
-            <button id="getProgressBtn" class="secondary">Get Progress</button>
-          </div>
-          <div id="progressStatus" class="status"></div>
-          <div id="progressBox"></div>
-        </div>
-      </section>
-    </section>
-  </main>
+      </div>
 
-  <div id="toast" class="toast hidden"></div>
-  <script src="app.js"></script>
+    </div>
+
+  </section>
+
+
+
+  <!-- =========================================================
+       INSTRUCTOR PANEL
+       ========================================================= -->
+
+  <section
+          id="instructorSection"
+          class="page-section"
+          style="display:none;"
+  >
+
+    <div class="section-header">
+
+      <div>
+
+        <h1>Instructor Panel</h1>
+
+        <p class="muted">
+          Manage sections and lectures.
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         CREATE SECTION
+         ===================================================== -->
+
+    <div class="panel-card">
+
+      <h2>
+        Create Section
+      </h2>
+
+
+      <form id="createSectionForm">
+
+        <label for="sectionCourseId">
+          Course
+        </label>
+
+        <select
+                id="sectionCourseId"
+                required
+        >
+
+          <option value="">
+            Select Course
+          </option>
+
+        </select>
+
+
+        <label for="sectionTitle">
+          Section Title
+        </label>
+
+        <input
+                type="text"
+                id="sectionTitle"
+                placeholder="Example: Introduction"
+                required
+        >
+
+
+        <label for="sectionDescription">
+          Description
+        </label>
+
+        <textarea
+                id="sectionDescription"
+                placeholder="Section description"
+        ></textarea>
+
+
+        <label for="sectionOrder">
+          Section Order
+        </label>
+
+        <input
+                type="number"
+                id="sectionOrder"
+                value="1"
+                min="1"
+                required
+        >
+
+
+        <button
+                type="submit"
+                class="primary-btn"
+        >
+          Create Section
+        </button>
+
+      </form>
+
+    </div>
+
+
+
+    <!-- =====================================================
+         CREATE LECTURE
+         ===================================================== -->
+
+    <div class="panel-card">
+
+      <h2>
+        Create Lecture
+      </h2>
+
+
+      <form id="createLectureForm">
+
+
+        <label for="lectureSectionId">
+          Section
+        </label>
+
+        <select
+                id="lectureSectionId"
+                required
+        >
+
+          <option value="">
+            Select Section
+          </option>
+
+        </select>
+
+
+
+        <label for="lectureTitle">
+          Lecture Title
+        </label>
+
+        <input
+                type="text"
+                id="lectureTitle"
+                placeholder="Lecture title"
+                required
+        >
+
+
+
+        <label for="lectureDescription">
+          Description
+        </label>
+
+        <textarea
+                id="lectureDescription"
+                placeholder="Lecture description"
+        ></textarea>
+
+
+
+        <label for="lectureDuration">
+          Duration (minutes)
+        </label>
+
+        <input
+                type="number"
+                id="lectureDuration"
+                min="1"
+                placeholder="20"
+                required
+        >
+
+
+
+        <label for="lectureOrder">
+          Lecture Order
+        </label>
+
+        <input
+                type="number"
+                id="lectureOrder"
+                min="1"
+                value="1"
+                required
+        >
+
+
+
+        <label class="checkbox-label">
+
+          <input
+                  type="checkbox"
+                  id="freePreview"
+          >
+
+          Free Preview
+
+        </label>
+
+
+
+        <!-- VIDEO -->
+
+        <label for="videoFile">
+          Lecture Video
+        </label>
+
+        <input
+                type="file"
+                id="videoFile"
+                accept="video/*"
+        >
+
+
+        <button
+                type="button"
+                id="uploadVideoBtn"
+                class="secondary-btn"
+        >
+          Upload Video
+        </button>
+
+
+
+        <!-- UPLOADED URL -->
+
+        <input
+                type="text"
+                id="uploadedVideoUrl"
+                readonly
+                placeholder="Cloudinary URL will appear here"
+                style="display:none;"
+        >
+
+
+
+        <!-- VIDEO PREVIEW -->
+
+        <video
+                id="videoPreview"
+                controls
+                style="display:none; width:100%; margin-top:15px;"
+        ></video>
+
+
+
+        <button
+                type="submit"
+                id="createLectureBtn"
+                class="primary-btn"
+                disabled
+        >
+          Create Lecture
+        </button>
+
+      </form>
+
+    </div>
+
+  </section>
+
+
+</main>
+
+
+
+<!-- =========================================================
+     MESSAGE
+     ========================================================= -->
+
+<div
+        id="messageBox"
+        class="message-box"
+        style="display:none;"
+></div>
+
+
+
+<script src="app.js"></script>
+
 </body>
+
 </html>
