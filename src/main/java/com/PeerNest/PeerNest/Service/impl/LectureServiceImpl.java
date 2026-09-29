@@ -1,11 +1,19 @@
 package com.PeerNest.PeerNest.Service.impl;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import com.PeerNest.PeerNest.Dto.LectureRequest;
 import com.PeerNest.PeerNest.Entity.Lecture;
 import com.PeerNest.PeerNest.Entity.Section;
+import com.PeerNest.PeerNest.Entity.User;
+import com.PeerNest.PeerNest.Repository.EnrollmentRepository;
 import com.PeerNest.PeerNest.Repository.LectureRepository;
 import com.PeerNest.PeerNest.Repository.SectionRepository;
+import com.PeerNest.PeerNest.Repository.UserRepository;
 import com.PeerNest.PeerNest.Service.LectureService;
+
 import lombok.RequiredArgsConstructor;
+import com.PeerNest.PeerNest.Repository.UserRepository;
+
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,22 +24,30 @@ public class LectureServiceImpl implements LectureService {
 
     private final LectureRepository lectureRepository;
     private final SectionRepository sectionRepository;
+    private final EnrollmentRepository enrollmentRepository;
+    private final UserRepository userRepository;
+
 
     @Override
     public Lecture createLecture(
             LectureRequest request,
             String instructorEmail) {
 
-        Section section = sectionRepository.findById(request.getSectionId())
+        Section section = sectionRepository
+                .findById(request.getSectionId())
                 .orElseThrow(() ->
                         new RuntimeException("Section not found"));
 
-        if (!section.getCourse().getInstructor().getEmail()
+
+        if (!section.getCourse()
+                .getInstructor()
+                .getEmail()
                 .equals(instructorEmail)) {
 
             throw new RuntimeException(
                     "You can only add lectures to your own courses");
         }
+
 
         Lecture lecture = Lecture.builder()
                 .title(request.getTitle())
@@ -43,8 +59,10 @@ public class LectureServiceImpl implements LectureService {
                 .section(section)
                 .build();
 
+
         return lectureRepository.save(lecture);
     }
+
 
     @Override
     public List<Lecture> getLectures(Long sectionId) {
@@ -58,17 +76,57 @@ public class LectureServiceImpl implements LectureService {
             Long lectureId,
             String instructorEmail) {
 
-        Lecture lecture = lectureRepository.findById(lectureId)
+        Lecture lecture = lectureRepository
+                .findById(lectureId)
                 .orElseThrow(() ->
                         new RuntimeException("Lecture not found"));
 
-        if (!lecture.getSection().getCourse().getInstructor().getEmail()
+
+        if (!lecture.getSection()
+                .getCourse()
+                .getInstructor()
+                .getEmail()
                 .equals(instructorEmail)) {
 
             throw new RuntimeException(
                     "You can only delete your own lectures");
         }
 
+
         lectureRepository.delete(lecture);
+    }
+    @Override
+    public List<Lecture> getStudentLectures(
+            Long sectionId,
+            String studentEmail) {
+
+        Section section = sectionRepository
+                .findById(sectionId)
+                .orElseThrow(() ->
+                        new RuntimeException("Section not found"));
+
+        User student = userRepository
+                .findByEmail(studentEmail)
+                .orElseThrow(() ->
+                        new RuntimeException("Student not found"));
+
+        Long courseId = section.getCourse().getId();
+
+        boolean enrolled =
+                enrollmentRepository
+                        .existsByStudentIdAndCourseId(
+                                student.getId(),
+                                courseId
+                        );
+
+        if (!enrolled) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You are not enrolled in this course"
+            );
+        }
+
+        return lectureRepository
+                .findBySectionIdOrderByLectureOrder(sectionId);
     }
 }

@@ -1,10 +1,11 @@
 package com.PeerNest.PeerNest.Controller;
 
 import com.PeerNest.PeerNest.Dto.LectureResponse;
-import com.PeerNest.PeerNest.Entity.Lecture;
 import com.PeerNest.PeerNest.Service.LectureService;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,10 +19,16 @@ public class StudentLectureController {
 
     @GetMapping("/section/{sectionId}")
     public ResponseEntity<List<LectureResponse>> getLectures(
-            @PathVariable Long sectionId) {
+            @PathVariable Long sectionId,
+            Authentication authentication) {
+
+        String studentEmail = authentication.getName();
 
         List<LectureResponse> response =
-                lectureService.getLectures(sectionId)
+                lectureService.getStudentLectures(
+                                sectionId,
+                                studentEmail
+                        )
                         .stream()
                         .map(lecture -> new LectureResponse(
                                 lecture.getId(),

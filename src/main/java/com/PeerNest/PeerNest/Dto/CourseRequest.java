@@ -1,8 +1,9 @@
 package com.PeerNest.PeerNest.Dto;
+
 import com.PeerNest.PeerNest.Entity.CourseLevel;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Data;
 
 @Data
@@ -14,7 +15,11 @@ public class CourseRequest {
     @NotBlank(message = "Course description is required")
     private String description;
 
-    @PositiveOrZero(message = "Price cannot be negative")
+    @DecimalMin(
+            value = "0.0",
+            inclusive = true,
+            message = "Price cannot be negative"
+    )
     private double price;
 
     private boolean free;

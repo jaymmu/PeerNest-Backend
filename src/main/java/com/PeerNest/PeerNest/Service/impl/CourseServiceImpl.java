@@ -1,4 +1,5 @@
 package com.PeerNest.PeerNest.Service.impl;
+
 import com.PeerNest.PeerNest.Dto.CourseRequest;
 import com.PeerNest.PeerNest.Dto.CourseResponse;
 import com.PeerNest.PeerNest.Entity.Course;
@@ -10,7 +11,9 @@ import com.PeerNest.PeerNest.Repository.SubjectRepository;
 import com.PeerNest.PeerNest.Repository.UserRepository;
 import com.PeerNest.PeerNest.Service.CourseService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -30,16 +33,24 @@ public class CourseServiceImpl implements CourseService {
         User instructor = userRepository
                 .findByEmail(instructorEmail)
                 .orElseThrow(() ->
-                        new RuntimeException("Instructor not found"));
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Instructor not found"
+                        ));
 
         Subject subject = subjectRepository
                 .findById(request.getSubjectId())
                 .orElseThrow(() ->
-                        new RuntimeException("Subject not found"));
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Subject not found"
+                        ));
+
+        validatePrice(request);
 
         Course course = Course.builder()
-                .title(request.getTitle())
-                .description(request.getDescription())
+                .title(request.getTitle().trim())
+                .description(request.getDescription().trim())
                 .price(request.isFree() ? 0 : request.getPrice())
                 .free(request.isFree())
                 .level(request.getLevel())
@@ -48,7 +59,8 @@ public class CourseServiceImpl implements CourseService {
                 .instructor(instructor)
                 .build();
 
-        Course savedCourse = courseRepository.save(course);
+        Course savedCourse =
+                courseRepository.save(course);
 
         return mapToResponse(savedCourse);
     }
@@ -60,7 +72,10 @@ public class CourseServiceImpl implements CourseService {
         User instructor = userRepository
                 .findByEmail(instructorEmail)
                 .orElseThrow(() ->
-                        new RuntimeException("Instructor not found"));
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Instructor not found"
+                        ));
 
         return courseRepository
                 .findByInstructorId(instructor.getId())
@@ -70,11 +85,16 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    public CourseResponse getCourseById(Long id) {
+    public CourseResponse getCourseById(
+            Long id,
+            String instructorEmail) {
 
-        Course course = courseRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Course not found"));
+        Course course = findCourse(id);
+
+        verifyOwnership(
+                course,
+                instructorEmail
+        );
 
         return mapToResponse(course);
     }
@@ -85,32 +105,51 @@ public class CourseServiceImpl implements CourseService {
             CourseRequest request,
             String instructorEmail) {
 
-        Course course = courseRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Course not found"));
+        Course course = findCourse(id);
 
-        if (!course.getInstructor().getEmail()
-                .equals(instructorEmail)) {
-
-            throw new RuntimeException(
-                    "You can only modify your own courses");
-        }
+        verifyOwnership(
+                course,
+                instructorEmail
+        );
 
         Subject subject = subjectRepository
                 .findById(request.getSubjectId())
                 .orElseThrow(() ->
-                        new RuntimeException("Subject not found"));
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Subject not found"
+                        ));
 
-        course.setTitle(request.getTitle());
-        course.setDescription(request.getDescription());
-        course.setPrice(
-                request.isFree() ? 0 : request.getPrice()
+        validatePrice(request);
+
+        course.setTitle(
+                request.getTitle().trim()
         );
-        course.setFree(request.isFree());
-        course.setLevel(request.getLevel());
-        course.setSubject(subject);
 
-        Course updatedCourse = courseRepository.save(course);
+        course.setDescription(
+                request.getDescription().trim()
+        );
+
+        course.setPrice(
+                request.isFree()
+                        ? 0
+                        : request.getPrice()
+        );
+
+        course.setFree(
+                request.isFree()
+        );
+
+        course.setLevel(
+                request.getLevel()
+        );
+
+        course.setSubject(
+                subject
+        );
+
+        Course updatedCourse =
+                courseRepository.save(course);
 
         return mapToResponse(updatedCourse);
     }
@@ -120,21 +159,59 @@ public class CourseServiceImpl implements CourseService {
             Long id,
             String instructorEmail) {
 
-        Course course = courseRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Course not found"));
+        Course course = findCourse(id);
 
-        if (!course.getInstructor().getEmail()
-                .equals(instructorEmail)) {
-
-            throw new RuntimeException(
-                    "You can only delete your own courses");
-        }
+        verifyOwnership(
+                course,
+                instructorEmail
+        );
 
         courseRepository.delete(course);
     }
 
-    private CourseResponse mapToResponse(Course course) {
+    private Course findCourse(Long id) {
+
+        return courseRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Course not found"
+                        ));
+    }
+
+    private void verifyOwnership(
+            Course course,
+            String instructorEmail) {
+
+        if (course.getInstructor() == null ||
+                course.getInstructor().getEmail() == null ||
+                !course.getInstructor()
+                        .getEmail()
+                        .equalsIgnoreCase(instructorEmail)) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You can only access your own courses"
+            );
+        }
+    }
+
+    private void validatePrice(
+            CourseRequest request) {
+
+        if (!request.isFree() &&
+                request.getPrice() <= 0) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Paid course price must be greater than 0"
+            );
+        }
+    }
+
+    private CourseResponse mapToResponse(
+            Course course) {
 
         return new CourseResponse(
                 course.getId(),

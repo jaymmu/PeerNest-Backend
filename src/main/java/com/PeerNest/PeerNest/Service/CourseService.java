@@ -1,4 +1,5 @@
 package com.PeerNest.PeerNest.Service;
+
 import com.PeerNest.PeerNest.Dto.CourseRequest;
 import com.PeerNest.PeerNest.Dto.CourseResponse;
 
@@ -15,7 +16,10 @@ public interface CourseService {
             String instructorEmail
     );
 
-    CourseResponse getCourseById(Long id);
+    CourseResponse getCourseById(
+            Long id,
+            String instructorEmail
+    );
 
     CourseResponse updateCourse(
             Long id,

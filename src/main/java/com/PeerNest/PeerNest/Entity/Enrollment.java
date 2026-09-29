@@ -10,7 +10,11 @@ import java.time.LocalDateTime;
         name = "enrollments",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        columnNames = {"student_id", "course_id"}
+                        name = "uk_student_course",
+                        columnNames = {
+                                "student_id",
+                                "course_id"
+                        }
                 )
         }
 )
@@ -25,13 +29,26 @@ public class Enrollment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private LocalDateTime enrolledAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "student_id", nullable = false)
+    // Student who purchased/enrolled
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(
+            name = "student_id",
+            nullable = false
+    )
     private User student;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "course_id", nullable = false)
+
+    // Course purchased
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(
+            name = "course_id",
+            nullable = false
+    )
     private Course course;
+
+
+    // Enrollment date
+    @Column(nullable = false)
+    private LocalDateTime enrolledAt;
 }

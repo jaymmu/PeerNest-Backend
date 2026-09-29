@@ -1,4 +1,5 @@
 package com.PeerNest.PeerNest.Controller;
+
 import com.PeerNest.PeerNest.Dto.CourseRequest;
 import com.PeerNest.PeerNest.Dto.CourseResponse;
 import com.PeerNest.PeerNest.Service.CourseService;
@@ -22,32 +23,39 @@ public class CourseController {
             @Valid @RequestBody CourseRequest request,
             Authentication authentication) {
 
-        return ResponseEntity.ok(
+        CourseResponse response =
                 courseService.createCourse(
                         request,
                         authentication.getName()
-                )
-        );
+                );
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping
     public ResponseEntity<List<CourseResponse>> getMyCourses(
             Authentication authentication) {
 
-        return ResponseEntity.ok(
+        List<CourseResponse> courses =
                 courseService.getInstructorCourses(
                         authentication.getName()
-                )
-        );
+                );
+
+        return ResponseEntity.ok(courses);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<CourseResponse> getCourse(
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            Authentication authentication) {
 
-        return ResponseEntity.ok(
-                courseService.getCourseById(id)
-        );
+        CourseResponse course =
+                courseService.getCourseById(
+                        id,
+                        authentication.getName()
+                );
+
+        return ResponseEntity.ok(course);
     }
 
     @PutMapping("/{id}")
@@ -56,13 +64,14 @@ public class CourseController {
             @Valid @RequestBody CourseRequest request,
             Authentication authentication) {
 
-        return ResponseEntity.ok(
+        CourseResponse response =
                 courseService.updateCourse(
                         id,
                         request,
                         authentication.getName()
-                )
-        );
+                );
+
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")

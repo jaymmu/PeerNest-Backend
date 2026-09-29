@@ -2,9 +2,9 @@ package com.PeerNest.PeerNest.Config;
 
 import com.PeerNest.PeerNest.Security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -18,82 +18,147 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http
+    ) throws Exception {
 
         http
-                // Disable CSRF because we are using JWT
+
+                // ==========================================
+                // CSRF
+                // ==========================================
+
                 .csrf(csrf -> csrf.disable())
 
-                // JWT authentication is stateless
+
+                // ==========================================
+                // SESSION MANAGEMENT
+                // ==========================================
+
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS
                         )
                 )
 
-                // Authorization rules
+
+                // ==========================================
+                // AUTHORIZATION
+                // ==========================================
+
                 .authorizeHttpRequests(auth -> auth
 
-                        // =========================
-                        // PUBLIC APIs
-                        // =========================
 
-                        .requestMatchers("/api/auth/**")
-                        .permitAll()
+                        // ----------------------------------
+                        // AUTHENTICATION
+                        // ----------------------------------
+                        // Login, register, etc.
 
-                        .requestMatchers("/api/courses")
-                        .permitAll()
-
-                        .requestMatchers("/api/courses/search")
-                        .permitAll()
-
-                        .requestMatchers("/api/courses/*")
-                        .permitAll()
+                        .requestMatchers(
+                                "/api/auth/**"
+                        ).permitAll()
 
 
-                        // =========================
+                        // ----------------------------------
+                        // PUBLIC COURSE APIs
+                        // ----------------------------------
+                        // Anyone can browse published courses.
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/courses"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/courses/search"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/courses/*"
+                        ).permitAll()
+
+
+                        // ----------------------------------
+                        // PAYMENT
+                        // ----------------------------------
+                        // Only logged-in students can purchase
+                        // courses.
+
+                        .requestMatchers(
+                                "/api/payment/**"
+                        ).hasRole("STUDENT")
+
+
+                        // ----------------------------------
                         // STUDENT APIs
-                        // =========================
+                        // ----------------------------------
 
-                        .requestMatchers("/api/student/**")
-                        .hasRole("STUDENT")
+                        .requestMatchers(
+                                "/api/student/**"
+                        ).hasRole("STUDENT")
 
 
-                        // =========================
+                        // ----------------------------------
                         // INSTRUCTOR APIs
-                        // =========================
+                        // ----------------------------------
 
-                        .requestMatchers("/api/instructor/**")
-                        .hasRole("INSTRUCTOR")
+                        .requestMatchers(
+                                "/api/instructor/**"
+                        ).hasRole("INSTRUCTOR")
 
 
-                        // =========================
+                        // ----------------------------------
                         // ADMIN APIs
-                        // =========================
+                        // ----------------------------------
 
-                        .requestMatchers("/api/admin/**")
-                        .hasRole("ADMIN")
+                        .requestMatchers(
+                                "/api/admin/**"
+                        ).hasRole("ADMIN")
 
 
-                        // =========================
-                        // OTHER REQUESTS
-                        // =========================
+                        // ----------------------------------
+                        // STATIC FRONTEND
+                        // ----------------------------------
 
-                        .anyRequest()
-                        .authenticated()
+                        .requestMatchers(
+                                "/",
+                                "/index.html",
+                                "/app.js",
+                                "/style.css",
+                                "/favicon.ico",
+                                "/error"
+                        ).permitAll()
+
+
+                        // ----------------------------------
+                        // EVERYTHING ELSE
+                        // ----------------------------------
+                        // Any API not explicitly allowed
+                        // requires authentication.
+
+                        .anyRequest().authenticated()
                 )
 
-                // JWT filter
+
+                // ==========================================
+                // JWT FILTER
+                // ==========================================
+
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
                 );
+
 
         return http.build();
     }

@@ -1,4 +1,5 @@
 package com.PeerNest.PeerNest.Service;
+
 import com.PeerNest.PeerNest.Dto.LectureRequest;
 import com.PeerNest.PeerNest.Entity.Lecture;
 
@@ -11,7 +12,14 @@ public interface LectureService {
             String instructorEmail
     );
 
+    // For instructor usage
     List<Lecture> getLectures(Long sectionId);
+
+    // For student usage - enrollment checked
+    List<Lecture> getStudentLectures(
+            Long sectionId,
+            String studentEmail
+    );
 
     void deleteLecture(
             Long lectureId,

@@ -2,10 +2,9 @@ package com.PeerNest.PeerNest.Controller;
 
 import com.PeerNest.PeerNest.Dto.SectionResponse;
 import com.PeerNest.PeerNest.Service.SectionService;
-
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,19 +16,19 @@ public class StudentSectionController {
 
     private final SectionService sectionService;
 
-
-    // =========================================================
-    // GET SECTIONS OF COURSE
-    // GET /api/student/sections/course/{courseId}
-    // =========================================================
-
     @GetMapping("/course/{courseId}")
     public ResponseEntity<List<SectionResponse>> getSections(
-            @PathVariable Long courseId) {
+            @PathVariable Long courseId,
+            Authentication authentication) {
+
+        String studentEmail = authentication.getName();
 
         List<SectionResponse> response =
                 sectionService
-                        .getSections(courseId)
+                        .getStudentSections(
+                                courseId,
+                                studentEmail
+                        )
                         .stream()
                         .map(section ->
                                 new SectionResponse(

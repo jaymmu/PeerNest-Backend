@@ -14,6 +14,11 @@ public interface SectionService {
 
     List<Section> getSections(Long courseId);
 
+    List<Section> getStudentSections(
+            Long courseId,
+            String studentEmail
+    );
+
     void deleteSection(
             Long sectionId,
             String instructorEmail

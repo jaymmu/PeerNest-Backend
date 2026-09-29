@@ -5,9 +5,12 @@ import com.PeerNest.PeerNest.Dto.PaymentVerificationRequest;
 import com.PeerNest.PeerNest.Dto.PaymentVerificationResponse;
 import com.PeerNest.PeerNest.Entity.Course;
 import com.PeerNest.PeerNest.Entity.Enrollment;
+import com.PeerNest.PeerNest.Entity.PaymentOrder;
+import com.PeerNest.PeerNest.Entity.PaymentStatus;
 import com.PeerNest.PeerNest.Entity.User;
 import com.PeerNest.PeerNest.Repository.CourseRepository;
 import com.PeerNest.PeerNest.Repository.EnrollmentRepository;
+import com.PeerNest.PeerNest.Repository.PaymentOrderRepository;
 import com.PeerNest.PeerNest.Repository.UserRepository;
 import com.PeerNest.PeerNest.Service.PaymentService;
 import com.razorpay.Order;
@@ -16,7 +19,10 @@ import com.razorpay.Utils;
 import lombok.RequiredArgsConstructor;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 
@@ -25,19 +31,16 @@ import java.time.LocalDateTime;
 public class PaymentServiceImpl implements PaymentService {
 
     private final RazorpayClient razorpayClient;
-
     private final CourseRepository courseRepository;
-
     private final EnrollmentRepository enrollmentRepository;
-
     private final UserRepository userRepository;
+    private final PaymentOrderRepository paymentOrderRepository;
 
     @Value("${razorpay.key.id}")
     private String razorpayKeyId;
 
     @Value("${razorpay.key.secret}")
     private String razorpayKeySecret;
-
 
     // =========================================================
     // CREATE RAZORPAY ORDER
@@ -46,53 +49,49 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     public PaymentOrderResponse createOrder(
             Long courseId,
-            String studentEmail
-    ) {
+            String studentEmail) {
 
-        // Find course
-        Course course = courseRepository.findById(courseId)
+        Course course = courseRepository
+                .findById(courseId)
                 .orElseThrow(() ->
-                        new RuntimeException("Course not found")
-                );
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Course not found"
+                        ));
 
-
-        // Check course status
         if (course.getStatus() == null ||
                 !course.getStatus().name().equals("PUBLISHED")) {
 
-            throw new RuntimeException(
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
                     "Only published courses can be purchased"
             );
         }
 
-
-        // Free course should not go through Razorpay
         if (course.isFree()) {
 
-            throw new RuntimeException(
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
                     "This course is free. Please enroll directly."
             );
         }
 
-
-        // Check price
         if (course.getPrice() <= 0) {
 
-            throw new RuntimeException(
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
                     "Invalid course price"
             );
         }
 
-
-        // Check student
         User student = userRepository
                 .findByEmail(studentEmail)
                 .orElseThrow(() ->
-                        new RuntimeException("Student not found")
-                );
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Student not found"
+                        ));
 
-
-        // Check if already enrolled
         boolean alreadyEnrolled =
                 enrollmentRepository
                         .existsByStudentIdAndCourseId(
@@ -102,24 +101,16 @@ public class PaymentServiceImpl implements PaymentService {
 
         if (alreadyEnrolled) {
 
-            throw new RuntimeException(
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
                     "You are already enrolled in this course"
             );
         }
 
-
         try {
 
-            /*
-             * Razorpay amount is always sent in paise.
-             *
-             * Example:
-             *
-             * ₹499 = 49900 paise
-             */
             long amountInPaise =
                     Math.round(course.getPrice() * 100);
-
 
             JSONObject orderRequest =
                     new JSONObject();
@@ -134,26 +125,52 @@ public class PaymentServiceImpl implements PaymentService {
                     "INR"
             );
 
+            String receipt =
+                    "peernest_"
+                            + student.getId()
+                            + "_"
+                            + courseId
+                            + "_"
+                            + System.currentTimeMillis();
+
             orderRequest.put(
                     "receipt",
-                    "peernest_course_" + courseId + "_" +
-                            System.currentTimeMillis()
+                    receipt
             );
 
-
-            // Create Razorpay order
             Order razorpayOrder =
                     razorpayClient.orders.create(
                             orderRequest
                     );
 
-
-            String orderId =
+            String razorpayOrderId =
                     razorpayOrder.get("id");
 
+            PaymentOrder paymentOrder =
+                    PaymentOrder.builder()
+                            .razorpayOrderId(
+                                    razorpayOrderId
+                            )
+                            .amountInPaise(
+                                    amountInPaise
+                            )
+                            .currency("INR")
+                            .status(
+                                    PaymentStatus.CREATED
+                            )
+                            .student(student)
+                            .course(course)
+                            .createdAt(
+                                    LocalDateTime.now()
+                            )
+                            .build();
+
+            paymentOrderRepository.save(
+                    paymentOrder
+            );
 
             return new PaymentOrderResponse(
-                    orderId,
+                    razorpayOrderId,
                     course.getId(),
                     course.getTitle(),
                     amountInPaise,
@@ -163,150 +180,160 @@ public class PaymentServiceImpl implements PaymentService {
 
         } catch (Exception e) {
 
-            throw new RuntimeException(
-                    "Failed to create Razorpay order: "
-                            + e.getMessage(),
-                    e
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to create payment order"
             );
         }
     }
 
-
     // =========================================================
-    // VERIFY RAZORPAY PAYMENT
+    // VERIFY PAYMENT
     // =========================================================
 
     @Override
+    @Transactional
     public PaymentVerificationResponse verifyPayment(
             PaymentVerificationRequest request,
-            String studentEmail
-    ) {
+            String studentEmail) {
+
+        User student = userRepository
+                .findByEmail(studentEmail)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Student not found"
+                        ));
+
+        PaymentOrder paymentOrder =
+                paymentOrderRepository
+                        .findByRazorpayOrderId(
+                                request.getRazorpayOrderId()
+                        )
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "Payment order not found"
+                                ));
+
+        // =====================================================
+        // SECURITY CHECK 1: ORDER OWNER
+        // =====================================================
+
+        if (!paymentOrder.getStudent()
+                .getId()
+                .equals(student.getId())) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You are not allowed to verify this payment"
+            );
+        }
+
+        // =====================================================
+        // SECURITY CHECK 2: COURSE
+        // =====================================================
+
+        if (!paymentOrder.getCourse()
+                .getId()
+                .equals(request.getCourseId())) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Payment order does not belong to this course"
+            );
+        }
+
+        // =====================================================
+        // IDEMPOTENCY
+        // =====================================================
+
+        if (paymentOrder.getStatus() == PaymentStatus.PAID) {
+
+            Enrollment existingEnrollment =
+                    enrollmentRepository
+                            .findById(
+                                    paymentOrder.getId()
+                            )
+                            .orElse(null);
+
+            return new PaymentVerificationResponse(
+                    true,
+                    "Payment already verified",
+                    existingEnrollment != null
+                            ? existingEnrollment.getId()
+                            : null
+            );
+        }
+
+        // =====================================================
+        // COURSE
+        // =====================================================
+
+        Course course =
+                paymentOrder.getCourse();
+
+        if (course.getStatus() == null ||
+                !course.getStatus()
+                        .name()
+                        .equals("PUBLISHED")) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Course is not available for purchase"
+            );
+        }
+
+        if (course.isFree()) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "This course is free"
+            );
+        }
+
+        // =====================================================
+        // AMOUNT CHECK
+        // =====================================================
+
+        long expectedAmount =
+                Math.round(course.getPrice() * 100);
+
+        if (!paymentOrder
+                .getAmountInPaise()
+                .equals(expectedAmount)) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Payment amount mismatch"
+            );
+        }
+
+        // =====================================================
+        // DUPLICATE ENROLLMENT CHECK
+        // =====================================================
+
+        boolean alreadyEnrolled =
+                enrollmentRepository
+                        .existsByStudentIdAndCourseId(
+                                student.getId(),
+                                course.getId()
+                        );
+
+        if (alreadyEnrolled) {
+
+            return new PaymentVerificationResponse(
+                    true,
+                    "You are already enrolled in this course",
+                    null
+            );
+        }
+
+        // =====================================================
+        // VERIFY RAZORPAY SIGNATURE
+        // =====================================================
 
         try {
-
-            // -------------------------------------------------
-            // Validate request
-            // -------------------------------------------------
-
-            if (request == null) {
-
-                return new PaymentVerificationResponse(
-                        false,
-                        "Invalid payment request",
-                        null
-                );
-            }
-
-
-            if (request.getCourseId() == null ||
-                    request.getRazorpayOrderId() == null ||
-                    request.getRazorpayPaymentId() == null ||
-                    request.getRazorpaySignature() == null) {
-
-                return new PaymentVerificationResponse(
-                        false,
-                        "Missing payment information",
-                        null
-                );
-            }
-
-
-            // -------------------------------------------------
-            // Find course
-            // -------------------------------------------------
-
-            Course course =
-                    courseRepository
-                            .findById(request.getCourseId())
-                            .orElse(null);
-
-
-            if (course == null) {
-
-                return new PaymentVerificationResponse(
-                        false,
-                        "Course not found",
-                        null
-                );
-            }
-
-
-            // -------------------------------------------------
-            // Check course status
-            // -------------------------------------------------
-
-            if (course.getStatus() == null ||
-                    !course.getStatus()
-                            .name()
-                            .equals("PUBLISHED")) {
-
-                return new PaymentVerificationResponse(
-                        false,
-                        "Course is not available for purchase",
-                        null
-                );
-            }
-
-
-            // -------------------------------------------------
-            // Check paid course
-            // -------------------------------------------------
-
-            if (course.isFree()) {
-
-                return new PaymentVerificationResponse(
-                        false,
-                        "This course is free. Please enroll directly.",
-                        null
-                );
-            }
-
-
-            // -------------------------------------------------
-            // Find student
-            // -------------------------------------------------
-
-            User student =
-                    userRepository
-                            .findByEmail(studentEmail)
-                            .orElse(null);
-
-
-            if (student == null) {
-
-                return new PaymentVerificationResponse(
-                        false,
-                        "Student not found",
-                        null
-                );
-            }
-
-
-            // -------------------------------------------------
-            // Check duplicate enrollment
-            // -------------------------------------------------
-
-            boolean alreadyEnrolled =
-                    enrollmentRepository
-                            .existsByStudentIdAndCourseId(
-                                    student.getId(),
-                                    course.getId()
-                            );
-
-
-            if (alreadyEnrolled) {
-
-                return new PaymentVerificationResponse(
-                        true,
-                        "You are already enrolled in this course",
-                        null
-                );
-            }
-
-
-            // -------------------------------------------------
-            // Prepare Razorpay signature data
-            // -------------------------------------------------
 
             JSONObject attributes =
                     new JSONObject();
@@ -326,53 +353,69 @@ public class PaymentServiceImpl implements PaymentService {
                     request.getRazorpaySignature()
             );
 
-
-            // -------------------------------------------------
-            // Verify Razorpay signature
-            // -------------------------------------------------
-
             boolean signatureValid =
                     Utils.verifyPaymentSignature(
                             attributes,
                             razorpayKeySecret
                     );
 
-
             if (!signatureValid) {
 
-                return new PaymentVerificationResponse(
-                        false,
-                        "Payment verification failed",
-                        null
+                paymentOrder.setStatus(
+                        PaymentStatus.FAILED
+                );
+
+                paymentOrderRepository.save(
+                        paymentOrder
+                );
+
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Payment verification failed"
                 );
             }
 
+            // =================================================
+            // SAVE PAYMENT
+            // =================================================
 
-            // -------------------------------------------------
-            // Create enrollment
-            // -------------------------------------------------
+            paymentOrder.setRazorpayPaymentId(
+                    request.getRazorpayPaymentId()
+            );
+
+            paymentOrder.setRazorpaySignature(
+                    request.getRazorpaySignature()
+            );
+
+            paymentOrder.setStatus(
+                    PaymentStatus.PAID
+            );
+
+            paymentOrder.setPaidAt(
+                    LocalDateTime.now()
+            );
+
+            paymentOrderRepository.save(
+                    paymentOrder
+            );
+
+            // =================================================
+            // CREATE ENROLLMENT
+            // =================================================
 
             Enrollment enrollment =
                     new Enrollment();
 
             enrollment.setStudent(student);
-
             enrollment.setCourse(course);
-
             enrollment.setEnrolledAt(
                     LocalDateTime.now()
             );
-
 
             Enrollment savedEnrollment =
                     enrollmentRepository.save(
                             enrollment
                     );
-
-
-            // -------------------------------------------------
-            // Success
-            // -------------------------------------------------
 
             return new PaymentVerificationResponse(
                     true,
@@ -380,14 +423,15 @@ public class PaymentServiceImpl implements PaymentService {
                     savedEnrollment.getId()
             );
 
+        } catch (ResponseStatusException e) {
+
+            throw e;
 
         } catch (Exception e) {
 
-            return new PaymentVerificationResponse(
-                    false,
-                    "Payment verification failed: "
-                            + e.getMessage(),
-                    null
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Payment verification failed"
             );
         }
     }
