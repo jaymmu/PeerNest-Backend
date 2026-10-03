@@ -23,6 +23,9 @@ public class Lecture {
 
     private String videoUrl;
 
+    @Column(nullable = false)
+    private boolean preview;
+
     private Integer durationInMinutes;
 
     private Integer lectureOrder;

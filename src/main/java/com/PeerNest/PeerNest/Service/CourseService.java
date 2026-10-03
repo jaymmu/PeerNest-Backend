@@ -31,4 +31,7 @@ public interface CourseService {
             Long id,
             String instructorEmail
     );
+    void publishCourse(Long courseId, String instructorEmail);
+
+    void unpublishCourse(Long courseId, String instructorEmail);
 }

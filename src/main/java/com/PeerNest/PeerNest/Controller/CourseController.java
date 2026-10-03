@@ -88,4 +88,32 @@ public class CourseController {
                 "Course deleted successfully"
         );
     }
+    @PutMapping("/{id}/publish")
+    public ResponseEntity<String> publishCourse(
+            @PathVariable Long id,
+            Authentication authentication) {
+
+        courseService.publishCourse(
+                id,
+                authentication.getName()
+        );
+
+        return ResponseEntity.ok(
+                "Course published successfully"
+        );
+    }
+    @PutMapping("/{id}/unpublish")
+    public ResponseEntity<String> unpublishCourse(
+            @PathVariable Long id,
+            Authentication authentication) {
+
+        courseService.unpublishCourse(
+                id,
+                authentication.getName()
+        );
+
+        return ResponseEntity.ok(
+                "Course unpublished successfully"
+        );
+    }
 }

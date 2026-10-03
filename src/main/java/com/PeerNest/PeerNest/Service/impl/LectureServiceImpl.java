@@ -1,7 +1,7 @@
 package com.PeerNest.PeerNest.Service.impl;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
+
 import com.PeerNest.PeerNest.Dto.LectureRequest;
+import com.PeerNest.PeerNest.Entity.Course;
 import com.PeerNest.PeerNest.Entity.Lecture;
 import com.PeerNest.PeerNest.Entity.Section;
 import com.PeerNest.PeerNest.Entity.User;
@@ -12,9 +12,10 @@ import com.PeerNest.PeerNest.Repository.UserRepository;
 import com.PeerNest.PeerNest.Service.LectureService;
 
 import lombok.RequiredArgsConstructor;
-import com.PeerNest.PeerNest.Repository.UserRepository;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -28,6 +29,10 @@ public class LectureServiceImpl implements LectureService {
     private final UserRepository userRepository;
 
 
+    // =========================================================
+    // CREATE LECTURE
+    // =========================================================
+
     @Override
     public Lecture createLecture(
             LectureRequest request,
@@ -35,17 +40,31 @@ public class LectureServiceImpl implements LectureService {
 
         Section section = sectionRepository
                 .findById(request.getSectionId())
-                .orElseThrow(() ->
-                        new RuntimeException("Section not found"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Section not found"
+                ));
+
+
+        if (section.getCourse() == null ||
+                section.getCourse().getInstructor() == null) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Course or instructor not found"
+            );
+        }
 
 
         if (!section.getCourse()
                 .getInstructor()
                 .getEmail()
-                .equals(instructorEmail)) {
+                .equalsIgnoreCase(instructorEmail)) {
 
-            throw new RuntimeException(
-                    "You can only add lectures to your own courses");
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You can only add lectures to your own courses"
+            );
         }
 
 
@@ -64,12 +83,21 @@ public class LectureServiceImpl implements LectureService {
     }
 
 
+    // =========================================================
+    // GET LECTURES - INSTRUCTOR
+    // =========================================================
+
     @Override
     public List<Lecture> getLectures(Long sectionId) {
 
         return lectureRepository
                 .findBySectionIdOrderByLectureOrder(sectionId);
     }
+
+
+    // =========================================================
+    // DELETE LECTURE
+    // =========================================================
 
     @Override
     public void deleteLecture(
@@ -78,55 +106,153 @@ public class LectureServiceImpl implements LectureService {
 
         Lecture lecture = lectureRepository
                 .findById(lectureId)
-                .orElseThrow(() ->
-                        new RuntimeException("Lecture not found"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Lecture not found"
+                ));
+
+
+        if (lecture.getSection() == null ||
+                lecture.getSection().getCourse() == null ||
+                lecture.getSection().getCourse().getInstructor() == null) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Course or instructor not found"
+            );
+        }
 
 
         if (!lecture.getSection()
                 .getCourse()
                 .getInstructor()
                 .getEmail()
-                .equals(instructorEmail)) {
+                .equalsIgnoreCase(instructorEmail)) {
 
-            throw new RuntimeException(
-                    "You can only delete your own lectures");
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You can only delete your own lectures"
+            );
         }
 
 
         lectureRepository.delete(lecture);
     }
+
+
+    // =========================================================
+    // GET LECTURES - STUDENT
+    // =========================================================
+
     @Override
     public List<Lecture> getStudentLectures(
             Long sectionId,
             String studentEmail) {
 
+        // -----------------------------------------------------
+        // Find section
+        // -----------------------------------------------------
+
         Section section = sectionRepository
                 .findById(sectionId)
-                .orElseThrow(() ->
-                        new RuntimeException("Section not found"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Section not found"
+                ));
+
+
+        // -----------------------------------------------------
+        // Find course
+        // -----------------------------------------------------
+
+        Course course = section.getCourse();
+
+        if (course == null) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Course not found"
+            );
+        }
+
+
+        // -----------------------------------------------------
+        // Find student
+        // -----------------------------------------------------
 
         User student = userRepository
                 .findByEmail(studentEmail)
-                .orElseThrow(() ->
-                        new RuntimeException("Student not found"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Student not found"
+                ));
 
-        Long courseId = section.getCourse().getId();
+
+        // -----------------------------------------------------
+        // Check enrollment
+        // -----------------------------------------------------
 
         boolean enrolled =
-                enrollmentRepository
-                        .existsByStudentIdAndCourseId(
-                                student.getId(),
-                                courseId
-                        );
+                enrollmentRepository.existsByStudentIdAndCourseId(
+                        student.getId(),
+                        course.getId()
+                );
 
-        if (!enrolled) {
+
+        // -----------------------------------------------------
+        // Get all lectures
+        // -----------------------------------------------------
+
+        List<Lecture> lectures =
+                lectureRepository
+                        .findBySectionIdOrderByLectureOrder(sectionId);
+
+
+        // =====================================================
+        // ENROLLED STUDENT
+        // =====================================================
+
+        if (enrolled) {
+
+            // Enrolled students can access everything.
+            return lectures;
+        }
+
+
+        // =====================================================
+        // NOT ENROLLED STUDENT
+        // =====================================================
+
+        /*
+         * For an unenrolled student:
+         *
+         * Only lectures marked freePreview=true
+         * can be returned.
+         */
+
+        List<Lecture> previewLectures = lectures
+                .stream()
+                .filter(Lecture::isFreePreview)
+                .toList();
+
+
+        // -----------------------------------------------------
+        // No preview lectures
+        // -----------------------------------------------------
+
+        if (previewLectures.isEmpty()) {
+
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "You are not enrolled in this course"
             );
         }
 
-        return lectureRepository
-                .findBySectionIdOrderByLectureOrder(sectionId);
+
+        // -----------------------------------------------------
+        // Return preview lectures only
+        // -----------------------------------------------------
+
+        return previewLectures;
     }
 }

@@ -12,6 +12,8 @@ public class LectureRequest {
     private String description;
 
     private String videoUrl;
+    private boolean preview;
+
 
     private Integer durationInMinutes;
 

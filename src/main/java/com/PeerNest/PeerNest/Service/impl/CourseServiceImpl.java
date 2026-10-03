@@ -225,4 +225,70 @@ public class CourseServiceImpl implements CourseService {
                 course.getInstructor().getName()
         );
     }
+    @Override
+    public void publishCourse(
+            Long courseId,
+            String instructorEmail) {
+
+        Course course = findCourse(courseId);
+
+        verifyOwnership(
+                course,
+                instructorEmail
+        );
+
+        if (course.getStatus() == CourseStatus.PUBLISHED) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Course is already published"
+            );
+        }
+
+        if (course.getStatus() == CourseStatus.PENDING_APPROVAL) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Course is waiting for approval"
+            );
+        }
+
+        if (course.getStatus() == CourseStatus.REJECTED) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Rejected course cannot be published directly"
+            );
+        }
+
+        course.setStatus(CourseStatus.PUBLISHED);
+
+        courseRepository.save(course);
+    }
+
+
+    @Override
+    public void unpublishCourse(
+            Long courseId,
+            String instructorEmail) {
+
+        Course course = findCourse(courseId);
+
+        verifyOwnership(
+                course,
+                instructorEmail
+        );
+
+        if (course.getStatus() != CourseStatus.PUBLISHED) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Only published courses can be unpublished"
+            );
+        }
+
+        course.setStatus(CourseStatus.DRAFT);
+
+        courseRepository.save(course);
+    }
 }

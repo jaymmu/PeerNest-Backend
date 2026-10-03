@@ -1,5 +1,5 @@
 package com.PeerNest.PeerNest.Repository;
-import com.PeerNest.PeerNest.Entity.Lecture;
+
 import com.PeerNest.PeerNest.Entity.Lecture;
 import org.springframework.data.jpa.repository.JpaRepository;
 
