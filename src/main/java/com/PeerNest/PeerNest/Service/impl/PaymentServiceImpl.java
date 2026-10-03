@@ -250,19 +250,10 @@ public class PaymentServiceImpl implements PaymentService {
 
         if (paymentOrder.getStatus() == PaymentStatus.PAID) {
 
-            Enrollment existingEnrollment =
-                    enrollmentRepository
-                            .findById(
-                                    paymentOrder.getId()
-                            )
-                            .orElse(null);
-
             return new PaymentVerificationResponse(
                     true,
                     "Payment already verified",
-                    existingEnrollment != null
-                            ? existingEnrollment.getId()
-                            : null
+                    null
             );
         }
 
