@@ -1,7 +1,9 @@
+
 package com.PeerNest.PeerNest.Controller;
 
 import com.PeerNest.PeerNest.Dto.EnrollmentResponse;
 import com.PeerNest.PeerNest.Dto.StudentCourseResponse;
+import com.PeerNest.PeerNest.Entity.CourseLevel;
 import com.PeerNest.PeerNest.Service.StudentCourseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,64 +20,69 @@ public class StudentCourseController {
 
     private final StudentCourseService studentCourseService;
 
-    // Anyone can browse published courses
+    // Browse all published courses
     @GetMapping("/courses")
-    public ResponseEntity<List<StudentCourseResponse>>
-    getCourses() {
-
+    public ResponseEntity<List<StudentCourseResponse>> getCourses() {
         return ResponseEntity.ok(
-                studentCourseService.getPublishedCourses()
-        );
+                studentCourseService.getPublishedCourses());
     }
 
-    // Anyone can view a published course
+    // View a published course
     @GetMapping("/courses/{id}")
-    public ResponseEntity<StudentCourseResponse>
-    getCourse(@PathVariable Long id) {
-
+    public ResponseEntity<StudentCourseResponse> getCourse(
+            @PathVariable Long id) {
         return ResponseEntity.ok(
-                studentCourseService.getCourseById(id)
-        );
+                studentCourseService.getCourseById(id));
     }
 
-    // Search courses
+    // Search published courses by title
     @GetMapping("/courses/search")
-    public ResponseEntity<List<StudentCourseResponse>>
-    searchCourses(
+    public ResponseEntity<List<StudentCourseResponse>> searchCourses(
             @RequestParam String keyword) {
-
         return ResponseEntity.ok(
-                studentCourseService
-                        .searchCourses(keyword)
-        );
+                studentCourseService.searchCourses(keyword));
     }
 
-    // Student enrollment
+    // Filter by subject ID
+    @GetMapping("/courses/subject/{subjectId}")
+    public ResponseEntity<List<StudentCourseResponse>> getCoursesBySubject(
+            @PathVariable Long subjectId) {
+        return ResponseEntity.ok(
+                studentCourseService.getCoursesBySubject(subjectId));
+    }
+
+    // Filter by level, e.g. BEGINNER
+    @GetMapping("/courses/level/{level}")
+    public ResponseEntity<List<StudentCourseResponse>> getCoursesByLevel(
+            @PathVariable CourseLevel level) {
+        return ResponseEntity.ok(
+                studentCourseService.getCoursesByLevel(level));
+    }
+
+    // Filter: true = free, false = paid
+    @GetMapping("/courses/free/{free}")
+    public ResponseEntity<List<StudentCourseResponse>> getCoursesByFreeStatus(
+            @PathVariable boolean free) {
+        return ResponseEntity.ok(
+                studentCourseService.getCoursesByFreeStatus(free));
+    }
+
+    // Enroll the authenticated student
     @PostMapping("/student/enrollments/{courseId}")
-    public ResponseEntity<EnrollmentResponse>
-    enroll(
+    public ResponseEntity<EnrollmentResponse> enroll(
             @PathVariable Long courseId,
             Authentication authentication) {
-
         return ResponseEntity.ok(
                 studentCourseService.enroll(
-                        courseId,
-                        authentication.getName()
-                )
-        );
+                        courseId, authentication.getName()));
     }
 
-    // Student's courses
+    // Get the authenticated student's enrollments
     @GetMapping("/student/enrollments")
-    public ResponseEntity<List<EnrollmentResponse>>
-    getMyEnrollments(
+    public ResponseEntity<List<EnrollmentResponse>> getMyEnrollments(
             Authentication authentication) {
-
         return ResponseEntity.ok(
-                studentCourseService
-                        .getMyEnrollments(
-                                authentication.getName()
-                        )
-        );
+                studentCourseService.getMyEnrollments(
+                        authentication.getName()));
     }
 }

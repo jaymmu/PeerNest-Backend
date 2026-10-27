@@ -31,7 +31,12 @@ public interface CourseService {
             Long id,
             String instructorEmail
     );
-    void publishCourse(Long courseId, String instructorEmail);
-
+    void submitCourseForApproval(Long courseId, String instructorEmail);
     void unpublishCourse(Long courseId, String instructorEmail);
+
+    List<CourseResponse> getPendingCourses();
+
+    void approveCourse(Long courseId);
+
+    void rejectCourse(Long courseId);
 }

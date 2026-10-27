@@ -1,5 +1,7 @@
+
 package com.PeerNest.PeerNest.Controller;
 
+import com.PeerNest.PeerNest.Dto.LectureRequest;
 import com.PeerNest.PeerNest.Dto.LectureResponse;
 import com.PeerNest.PeerNest.Entity.Lecture;
 import com.PeerNest.PeerNest.Service.LectureService;
@@ -19,45 +21,25 @@ public class LectureController {
 
     @PostMapping
     public ResponseEntity<LectureResponse> createLecture(
-            @RequestBody com.PeerNest.PeerNest.Dto.LectureRequest request,
+            @RequestBody LectureRequest request,
             Authentication authentication) {
 
         Lecture lecture = lectureService.createLecture(
-                request,
-                authentication.getName()
-        );
+                request, authentication.getName());
 
-        return ResponseEntity.ok(
-                new LectureResponse(
-                        lecture.getId(),
-                        lecture.getTitle(),
-                        lecture.getDescription(),
-                        lecture.getVideoUrl(),
-                        lecture.getDurationInMinutes(),
-                        lecture.getLectureOrder(),
-                        lecture.isFreePreview(),
-                        lecture.getSection().getId()
-                )
-        );
+        return ResponseEntity.ok(toResponse(lecture));
     }
 
     @GetMapping("/section/{sectionId}")
     public ResponseEntity<List<LectureResponse>> getLectures(
-            @PathVariable Long sectionId) {
+            @PathVariable Long sectionId,
+            Authentication authentication) {
 
         List<LectureResponse> response =
-                lectureService.getLectures(sectionId)
+                lectureService.getStudentLectures(
+                                sectionId, authentication.getName())
                         .stream()
-                        .map(lecture -> new LectureResponse(
-                                lecture.getId(),
-                                lecture.getTitle(),
-                                lecture.getDescription(),
-                                lecture.getVideoUrl(),
-                                lecture.getDurationInMinutes(),
-                                lecture.getLectureOrder(),
-                                lecture.isFreePreview(),
-                                lecture.getSection().getId()
-                        ))
+                        .map(this::toResponse)
                         .toList();
 
         return ResponseEntity.ok(response);
@@ -68,13 +50,21 @@ public class LectureController {
             @PathVariable Long id,
             Authentication authentication) {
 
-        lectureService.deleteLecture(
-                id,
-                authentication.getName()
-        );
+        lectureService.deleteLecture(id, authentication.getName());
 
-        return ResponseEntity.ok(
-                "Lecture deleted successfully"
+        return ResponseEntity.ok("Lecture deleted successfully");
+    }
+
+    private LectureResponse toResponse(Lecture lecture) {
+        return new LectureResponse(
+                lecture.getId(),
+                lecture.getTitle(),
+                lecture.getDescription(),
+                lecture.getVideoUrl(),
+                lecture.getDurationInMinutes(),
+                lecture.getLectureOrder(),
+                lecture.isFreePreview(),
+                lecture.getSection().getId()
         );
     }
 }

@@ -1,3 +1,4 @@
+
 package com.PeerNest.PeerNest.Service.impl;
 
 import com.PeerNest.PeerNest.Dto.EnrollmentResponse;
@@ -8,91 +9,112 @@ import com.PeerNest.PeerNest.Repository.EnrollmentRepository;
 import com.PeerNest.PeerNest.Repository.UserRepository;
 import com.PeerNest.PeerNest.Service.StudentCourseService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class StudentCourseServiceImpl
-        implements StudentCourseService {
+@Transactional(readOnly = true)
+public class StudentCourseServiceImpl implements StudentCourseService {
 
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
 
+    // Get all published courses
     @Override
     public List<StudentCourseResponse> getPublishedCourses() {
-
-        return courseRepository
-                .findByStatus(CourseStatus.PUBLISHED)
+        return courseRepository.findByStatus(CourseStatus.PUBLISHED)
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
+    // Get one published course
     @Override
-    public StudentCourseResponse getCourseById(
-            Long courseId) {
-
+    public StudentCourseResponse getCourseById(Long courseId) {
         Course course = courseRepository
-                .findById(courseId)
-                .orElseThrow(() ->
-                        new RuntimeException("Course not found"));
-
-        if (course.getStatus() != CourseStatus.PUBLISHED) {
-            throw new RuntimeException(
-                    "Course is not available"
-            );
-        }
+                .findByIdAndStatus(courseId, CourseStatus.PUBLISHED)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Published course not found"));
 
         return mapToResponse(course);
     }
 
+    // Search published courses by title
     @Override
-    public List<StudentCourseResponse> searchCourses(
-            String keyword) {
+    public List<StudentCourseResponse> searchCourses(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Search keyword cannot be empty");
+        }
 
         return courseRepository
-                .findByTitleContainingIgnoreCase(keyword)
+                .findByStatusAndTitleContainingIgnoreCase(
+                        CourseStatus.PUBLISHED, keyword.trim())
                 .stream()
-                .filter(course ->
-                        course.getStatus()
-                                == CourseStatus.PUBLISHED)
                 .map(this::mapToResponse)
                 .toList();
     }
 
+    // Filter by subject ID
     @Override
-    public EnrollmentResponse enroll(
-            Long courseId,
-            String studentEmail) {
+    public List<StudentCourseResponse> getCoursesBySubject(Long subjectId) {
+        return courseRepository
+                .findByStatusAndSubjectId(
+                        CourseStatus.PUBLISHED, subjectId)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
 
-        User student = userRepository
-                .findByEmail(studentEmail)
-                .orElseThrow(() ->
-                        new RuntimeException("Student not found"));
+    // Filter by course level
+    @Override
+    public List<StudentCourseResponse> getCoursesByLevel(CourseLevel level) {
+        return courseRepository
+                .findByStatusAndLevel(CourseStatus.PUBLISHED, level)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    // Filter by free or paid status
+    @Override
+    public List<StudentCourseResponse> getCoursesByFreeStatus(boolean free) {
+        return courseRepository
+                .findByStatusAndFree(CourseStatus.PUBLISHED, free)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    // Enroll a student in a published course
+    @Override
+    @Transactional
+    public EnrollmentResponse enroll(Long courseId, String studentEmail) {
+
+        User student = userRepository.findByEmail(studentEmail)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Student not found"));
 
         Course course = courseRepository
-                .findById(courseId)
-                .orElseThrow(() ->
-                        new RuntimeException("Course not found"));
+                .findByIdAndStatus(courseId, CourseStatus.PUBLISHED)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Published course not found"));
 
-        if (course.getStatus() != CourseStatus.PUBLISHED) {
-            throw new RuntimeException(
-                    "You cannot enroll in this course"
-            );
-        }
-
-        if (enrollmentRepository
-                .existsByStudentIdAndCourseId(
-                        student.getId(),
-                        courseId)) {
-
-            throw new RuntimeException(
-                    "Already enrolled in this course"
-            );
+        if (enrollmentRepository.existsByStudentIdAndCourseId(
+                student.getId(), courseId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Already enrolled in this course");
         }
 
         Enrollment enrollment = Enrollment.builder()
@@ -101,8 +123,7 @@ public class StudentCourseServiceImpl
                 .enrolledAt(LocalDateTime.now())
                 .build();
 
-        Enrollment saved =
-                enrollmentRepository.save(enrollment);
+        Enrollment saved = enrollmentRepository.save(enrollment);
 
         return new EnrollmentResponse(
                 saved.getId(),
@@ -113,35 +134,28 @@ public class StudentCourseServiceImpl
         );
     }
 
+    // Get the current student's enrollments
     @Override
-    public List<EnrollmentResponse> getMyEnrollments(
-            String studentEmail) {
+    public List<EnrollmentResponse> getMyEnrollments(String studentEmail) {
 
-        User student = userRepository
-                .findByEmail(studentEmail)
-                .orElseThrow(() ->
-                        new RuntimeException("Student not found"));
+        User student = userRepository.findByEmail(studentEmail)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Student not found"));
 
-        return enrollmentRepository
-                .findByStudentId(student.getId())
+        return enrollmentRepository.findByStudentId(student.getId())
                 .stream()
-                .map(enrollment ->
-                        new EnrollmentResponse(
-                                enrollment.getId(),
-                                enrollment.getCourse().getId(),
-                                enrollment.getCourse().getTitle(),
-                                enrollment.getCourse()
-                                        .getInstructor()
-                                        .getName(),
-                                enrollment.getEnrolledAt()
-                        )
-                )
+                .map(enrollment -> new EnrollmentResponse(
+                        enrollment.getId(),
+                        enrollment.getCourse().getId(),
+                        enrollment.getCourse().getTitle(),
+                        enrollment.getCourse().getInstructor().getName(),
+                        enrollment.getEnrolledAt()
+                ))
                 .toList();
     }
 
-    private StudentCourseResponse mapToResponse(
-            Course course) {
-
+    // Map entity to student-facing DTO
+    private StudentCourseResponse mapToResponse(Course course) {
         return new StudentCourseResponse(
                 course.getId(),
                 course.getTitle(),

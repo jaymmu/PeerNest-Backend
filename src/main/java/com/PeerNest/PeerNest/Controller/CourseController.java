@@ -93,7 +93,7 @@ public class CourseController {
             @PathVariable Long id,
             Authentication authentication) {
 
-        courseService.publishCourse(
+        courseService.submitCourseForApproval(
                 id,
                 authentication.getName()
         );
@@ -116,4 +116,5 @@ public class CourseController {
                 "Course unpublished successfully"
         );
     }
+
 }

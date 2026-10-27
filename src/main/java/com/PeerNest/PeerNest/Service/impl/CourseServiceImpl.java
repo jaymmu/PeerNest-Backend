@@ -226,19 +226,15 @@ public class CourseServiceImpl implements CourseService {
         );
     }
     @Override
-    public void publishCourse(
+    public void submitCourseForApproval(
             Long courseId,
             String instructorEmail) {
 
         Course course = findCourse(courseId);
 
-        verifyOwnership(
-                course,
-                instructorEmail
-        );
+        verifyOwnership(course, instructorEmail);
 
         if (course.getStatus() == CourseStatus.PUBLISHED) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Course is already published"
@@ -246,22 +242,13 @@ public class CourseServiceImpl implements CourseService {
         }
 
         if (course.getStatus() == CourseStatus.PENDING_APPROVAL) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Course is waiting for approval"
+                    "Course is already waiting for approval"
             );
         }
 
-        if (course.getStatus() == CourseStatus.REJECTED) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Rejected course cannot be published directly"
-            );
-        }
-
-        course.setStatus(CourseStatus.PUBLISHED);
+        course.setStatus(CourseStatus.PENDING_APPROVAL);
 
         courseRepository.save(course);
     }
@@ -289,6 +276,44 @@ public class CourseServiceImpl implements CourseService {
 
         course.setStatus(CourseStatus.DRAFT);
 
+        courseRepository.save(course);
+    }
+    @Override
+    public List<CourseResponse> getPendingCourses() {
+        return courseRepository
+                .findByStatus(CourseStatus.PENDING_APPROVAL)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Override
+    public void approveCourse(Long courseId) {
+        Course course = findCourse(courseId);
+
+        if (course.getStatus() != CourseStatus.PENDING_APPROVAL) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Only pending courses can be approved"
+            );
+        }
+
+        course.setStatus(CourseStatus.PUBLISHED);
+        courseRepository.save(course);
+    }
+
+    @Override
+    public void rejectCourse(Long courseId) {
+        Course course = findCourse(courseId);
+
+        if (course.getStatus() != CourseStatus.PENDING_APPROVAL) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Only pending courses can be rejected"
+            );
+        }
+
+        course.setStatus(CourseStatus.REJECTED);
         courseRepository.save(course);
     }
 }

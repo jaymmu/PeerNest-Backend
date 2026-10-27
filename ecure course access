@@ -1,0 +1,724 @@
+[1mdiff --git a/src/main/java/com/PeerNest/PeerNest/Controller/AdminCourseController.java b/src/main/java/com/PeerNest/PeerNest/Controller/AdminCourseController.java[m
+[1mnew file mode 100644[m
+[1mindex 0000000..8a2e369[m
+[1m--- /dev/null[m
+[1m+++ b/src/main/java/com/PeerNest/PeerNest/Controller/AdminCourseController.java[m
+[36m@@ -0,0 +1,46 @@[m
+[32m+[m[32mpackage com.PeerNest.PeerNest.Controller;[m
+[32m+[m
+[32m+[m[32mimport com.PeerNest.PeerNest.Dto.CourseResponse;[m
+[32m+[m[32mimport com.PeerNest.PeerNest.Service.CourseService;[m
+[32m+[m[32mimport lombok.RequiredArgsConstructor;[m
+[32m+[m[32mimport org.springframework.http.ResponseEntity;[m
+[32m+[m[32mimport org.springframework.web.bind.annotation.*;[m
+[32m+[m
+[32m+[m[32mimport java.util.List;[m
+[32m+[m
+[32m+[m[32m@RestController[m
+[32m+[m[32m@RequestMapping("/api/admin/courses")[m
+[32m+[m[32m@RequiredArgsConstructor[m
+[32m+[m[32mpublic class AdminCourseController {[m
+[32m+[m
+[32m+[m[32m    private final CourseService courseService;[m
+[32m+[m
+[32m+[m[32m    @GetMapping("/pending")[m
+[32m+[m[32m    public ResponseEntity<List<CourseResponse>> getPendingCourses() {[m
+[32m+[m[32m        return ResponseEntity.ok([m
+[32m+[m[32m                courseService.getPendingCourses()[m
+[32m+[m[32m        );[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    @PutMapping("/{id}/approve")[m
+[32m+[m[32m    public ResponseEntity<String> approveCourse([m
+[32m+[m[32m            @PathVariable Long id) {[m
+[32m+[m
+[32m+[m[32m        courseService.approveCourse(id);[m
+[32m+[m
+[32m+[m[32m        return ResponseEntity.ok([m
+[32m+[m[32m                "Course approved and published successfully"[m
+[32m+[m[32m        );[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    @PutMapping("/{id}/reject")[m
+[32m+[m[32m    public ResponseEntity<String> rejectCourse([m
+[32m+[m[32m            @PathVariable Long id) {[m
+[32m+[m
+[32m+[m[32m        courseService.rejectCourse(id);[m
+[32m+[m
+[32m+[m[32m        return ResponseEntity.ok([m
+[32m+[m[32m                "Course rejected successfully"[m
+[32m+[m[32m        );[m
+[32m+[m[32m    }[m
+[32m+[m[32m}[m
+\ No newline at end of file[m
+[1mdiff --git a/src/main/java/com/PeerNest/PeerNest/Controller/CourseController.java b/src/main/java/com/PeerNest/PeerNest/Controller/CourseController.java[m
+[1mindex cb09d6d..7b9664b 100644[m
+[1m--- a/src/main/java/com/PeerNest/PeerNest/Controller/CourseController.java[m
+[1m+++ b/src/main/java/com/PeerNest/PeerNest/Controller/CourseController.java[m
+[36m@@ -93,7 +93,7 @@[m [mpublic class CourseController {[m
+             @PathVariable Long id,[m
+             Authentication authentication) {[m
+ [m
+[31m-        courseService.publishCourse([m
+[32m+[m[32m        courseService.submitCourseForApproval([m
+                 id,[m
+                 authentication.getName()[m
+         );[m
+[36m@@ -116,4 +116,5 @@[m [mpublic class CourseController {[m
+                 "Course unpublished successfully"[m
+         );[m
+     }[m
+[32m+[m
+ }[m
+\ No newline at end of file[m
+[1mdiff --git a/src/main/java/com/PeerNest/PeerNest/Controller/LectureController.java b/src/main/java/com/PeerNest/PeerNest/Controller/LectureController.java[m
+[1mindex 21e22ed..1b2514a 100644[m
+[1m--- a/src/main/java/com/PeerNest/PeerNest/Controller/LectureController.java[m
+[1m+++ b/src/main/java/com/PeerNest/PeerNest/Controller/LectureController.java[m
+[36m@@ -1,5 +1,7 @@[m
+[32m+[m
+ package com.PeerNest.PeerNest.Controller;[m
+ [m
+[32m+[m[32mimport com.PeerNest.PeerNest.Dto.LectureRequest;[m
+ import com.PeerNest.PeerNest.Dto.LectureResponse;[m
+ import com.PeerNest.PeerNest.Entity.Lecture;[m
+ import com.PeerNest.PeerNest.Service.LectureService;[m
+[36m@@ -19,45 +21,25 @@[m [mpublic class LectureController {[m
+ [m
+     @PostMapping[m
+     public ResponseEntity<LectureResponse> createLecture([m
+[31m-            @RequestBody com.PeerNest.PeerNest.Dto.LectureRequest request,[m
+[32m+[m[32m            @RequestBody LectureRequest request,[m
+             Authentication authentication) {[m
+ [m
+         Lecture lecture = lectureService.createLecture([m
+[31m-                request,[m
+[31m-                authentication.getName()[m
+[31m-        );[m
+[32m+[m[32m                request, authentication.getName());[m
+ [m
+[31m-        return ResponseEntity.ok([m
+[31m-                new LectureResponse([m
+[31m-                        lecture.getId(),[m
+[31m-                        lecture.getTitle(),[m
+[31m-                        lecture.getDescription(),[m
+[31m-                        lecture.getVideoUrl(),[m
+[31m-                        lecture.getDurationInMinutes(),[m
+[31m-                        lecture.getLectureOrder(),[m
+[31m-                        lecture.isFreePreview(),[m
+[31m-                        lecture.getSection().getId()[m
+[31m-                )[m
+[31m-        );[m
+[32m+[m[32m        return ResponseEntity.ok(toResponse(lecture));[m
+     }[m
+ [m
+     @GetMapping("/section/{sectionId}")[m
+     public ResponseEntity<List<LectureResponse>> getLectures([m
+[31m-            @PathVariable Long sectionId) {[m
+[32m+[m[32m            @PathVariable Long sectionId,[m
+[32m+[m[32m            Authentication authentication) {[m
+ [m
+         List<LectureResponse> response =[m
+[31m-                lectureService.getLectures(sectionId)[m
+[32m+[m[32m                lectureService.getStudentLectures([m
+[32m+[m[32m                                sectionId, authentication.getName())[m
+                         .stream()[m
+[31m-                        .map(lecture -> new LectureResponse([m
+[31m-                                lecture.getId(),[m
+[31m-                                lecture.getTitle(),[m
+[31m-                                lecture.getDescription(),[m
+[31m-                                lecture.getVideoUrl(),[m
+[31m-                                lecture.getDurationInMinutes(),[m
+[31m-                                lecture.getLectureOrder(),[m
+[31m-                                lecture.isFreePreview(),[m
+[31m-                                lecture.getSection().getId()[m
+[31m-                        ))[m
+[32m+[m[32m                        .map(this::toResponse)[m
+                         .toList();[m
+ [m
+         return ResponseEntity.ok(response);[m
+[36m@@ -68,13 +50,21 @@[m [mpublic class LectureController {[m
+             @PathVariable Long id,[m
+             Authentication authentication) {[m
+ [m
+[31m-        lectureService.deleteLecture([m
+[31m-                id,[m
+[31m-                authentication.getName()[m
+[31m-        );[m
+[32m+[m[32m        lectureService.deleteLecture(id, authentication.getName());[m
+[32m+[m
+[32m+[m[32m        return ResponseEntity.ok("Lecture deleted successfully");[m
+[32m+[m[32m    }[m
+ [m
+[31m-        return ResponseEntity.ok([m
+[31m-                "Lecture deleted successfully"[m
+[32m+[m[32m    private LectureResponse toResponse(Lecture lecture) {[m
+[32m+[m[32m        return new LectureResponse([m
+[32m+[m[32m                lecture.getId(),[m
+[32m+[m[32m                lecture.getTitle(),[m
+[32m+[m[32m                lecture.getDescription(),[m
+[32m+[m[32m                lecture.getVideoUrl(),[m
+[32m+[m[32m                lecture.getDurationInMinutes(),[m
+[32m+[m[32m                lecture.getLectureOrder(),[m
+[32m+[m[32m                lecture.isFreePreview(),[m
+[32m+[m[32m                lecture.getSection().getId()[m
+         );[m
+     }[m
+[31m-}[m
+\ No newline at end of file[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/main/java/com/PeerNest/PeerNest/Controller/StudentCourseController.java b/src/main/java/com/PeerNest/PeerNest/Controller/StudentCourseController.java[m
+[1mindex a780024..21a8d75 100644[m
+[1m--- a/src/main/java/com/PeerNest/PeerNest/Controller/StudentCourseController.java[m
+[1m+++ b/src/main/java/com/PeerNest/PeerNest/Controller/StudentCourseController.java[m
+[36m@@ -1,7 +1,9 @@[m
+[32m+[m
+ package com.PeerNest.PeerNest.Controller;[m
+ [m
+ import com.PeerNest.PeerNest.Dto.EnrollmentResponse;[m
+ import com.PeerNest.PeerNest.Dto.StudentCourseResponse;[m
+[32m+[m[32mimport com.PeerNest.PeerNest.Entity.CourseLevel;[m
+ import com.PeerNest.PeerNest.Service.StudentCourseService;[m
+ import lombok.RequiredArgsConstructor;[m
+ import org.springframework.http.ResponseEntity;[m
+[36m@@ -18,64 +20,69 @@[m [mpublic class StudentCourseController {[m
+ [m
+     private final StudentCourseService studentCourseService;[m
+ [m
+[31m-    // Anyone can browse published courses[m
+[32m+[m[32m    // Browse all published courses[m
+     @GetMapping("/courses")[m
+[31m-    public ResponseEntity<List<StudentCourseResponse>>[m
+[31m-    getCourses() {[m
+[31m-[m
+[32m+[m[32m    public ResponseEntity<List<StudentCourseResponse>> getCourses() {[m
+         return ResponseEntity.ok([m
+[31m-                studentCourseService.getPublishedCourses()[m
+[31m-        );[m
+[32m+[m[32m                studentCourseService.getPublishedCourses());[m
+     }[m
+ [m
+[31m-    // Anyone can view a published course[m
+[32m+[m[32m    // View a published course[m
+     @GetMapping("/courses/{id}")[m
+[31m-    public ResponseEntity<StudentCourseResponse>[m
+[31m-    getCourse(@PathVariable Long id) {[m
+[31m-[m
+[32m+[m[32m    public ResponseEntity<StudentCourseResponse> getCourse([m
+[32m+[m[32m            @PathVariable Long id) {[m
+         return ResponseEntity.ok([m
+[31m-                studentCourseService.getCourseById(id)[m
+[31m-        );[m
+[32m+[m[32m                studentCourseService.getCourseById(id));[m
+     }[m
+ [m
+[31m-    // Search courses[m
+[32m+[m[32m    // Search published courses by title[m
+     @GetMapping("/courses/search")[m
+[31m-    public ResponseEntity<List<StudentCourseResponse>>[m
+[31m-    searchCourses([m
+[32m+[m[32m    public ResponseEntity<List<StudentCourseResponse>> searchCourses([m
+             @RequestParam String keyword) {[m
+[32m+[m[32m        return ResponseEntity.ok([m
+[32m+[m[32m                studentCourseService.searchCourses(keyword));[m
+[32m+[m[32m    }[m
+ [m
+[32m+[m[32m    // Filter by subject ID[m
+[32m+[m[32m    @GetMapping("/courses/subject/{subjectId}")[m
+[32m+[m[32m    public ResponseEntity<List<StudentCourseResponse>> getCoursesBySubject([m
+[32m+[m[32m            @PathVariable Long subjectId) {[m
+         return ResponseEntity.ok([m
+[31m-                studentCourseService[m
+[31m-                        .searchCourses(keyword)[m
+[31m-        );[m
+[32m+[m[32m                studentCourseService.getCoursesBySubject(subjectId));[m
+     }[m
+ [m
+[31m-    // Student enrollment[m
+[32m+[m[32m    // Filter by level, e.g. BEGINNER[m
+[32m+[m[32m    @GetMapping("/courses/level/{level}")[m
+[32m+[m[32m    public ResponseEntity<List<StudentCourseResponse>> getCoursesByLevel([m
+[32m+[m[32m            @PathVariable CourseLevel level) {[m
+[32m+[m[32m        return ResponseEntity.ok([m
+[32m+[m[32m                studentCourseService.getCoursesByLevel(level));[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // Filter: true = free, false = paid[m
+[32m+[m[32m    @GetMapping("/courses/free/{free}")[m
+[32m+[m[32m    public ResponseEntity<List<StudentCourseResponse>> getCoursesByFreeStatus([m
+[32m+[m[32m            @PathVariable boolean free) {[m
+[32m+[m[32m        return ResponseEntity.ok([m
+[32m+[m[32m                studentCourseService.getCoursesByFreeStatus(free));[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // Enroll the authenticated student[m
+     @PostMapping("/student/enrollments/{courseId}")[m
+[31m-    public ResponseEntity<EnrollmentResponse>[m
+[31m-    enroll([m
+[32m+[m[32m    public ResponseEntity<EnrollmentResponse> enroll([m
+             @PathVariable Long courseId,[m
+             Authentication authentication) {[m
+[31m-[m
+         return ResponseEntity.ok([m
+                 studentCourseService.enroll([m
+[31m-                        courseId,[m
+[31m-                        authentication.getName()[m
+[31m-                )[m
+[31m-        );[m
+[32m+[m[32m                        courseId, authentication.getName()));[m
+     }[m
+ [m
+[31m-    // Student's courses[m
+[32m+[m[32m    // Get the authenticated student's enrollments[m
+     @GetMapping("/student/enrollments")[m
+[31m-    public ResponseEntity<List<EnrollmentResponse>>[m
+[31m-    getMyEnrollments([m
+[32m+[m[32m    public ResponseEntity<List<EnrollmentResponse>> getMyEnrollments([m
+             Authentication authentication) {[m
+[31m-[m
+         return ResponseEntity.ok([m
+[31m-                studentCourseService[m
+[31m-                        .getMyEnrollments([m
+[31m-                                authentication.getName()[m
+[31m-                        )[m
+[31m-        );[m
+[32m+[m[32m                studentCourseService.getMyEnrollments([m
+[32m+[m[32m                        authentication.getName()));[m
+     }[m
+[31m-}[m
+\ No newline at end of file[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/main/java/com/PeerNest/PeerNest/Repository/CourseRepository.java b/src/main/java/com/PeerNest/PeerNest/Repository/CourseRepository.java[m
+[1mindex 1fdb456..46a1074 100644[m
+[1m--- a/src/main/java/com/PeerNest/PeerNest/Repository/CourseRepository.java[m
+[1m+++ b/src/main/java/com/PeerNest/PeerNest/Repository/CourseRepository.java[m
+[36m@@ -1,12 +1,17 @@[m
+[32m+[m
+ package com.PeerNest.PeerNest.Repository;[m
+[32m+[m
+ import com.PeerNest.PeerNest.Entity.Course;[m
+[32m+[m[32mimport com.PeerNest.PeerNest.Entity.CourseLevel;[m
+ import com.PeerNest.PeerNest.Entity.CourseStatus;[m
+ import org.springframework.data.jpa.repository.JpaRepository;[m
+ [m
+ import java.util.List;[m
+[32m+[m[32mimport java.util.Optional;[m
+ [m
+ public interface CourseRepository extends JpaRepository<Course, Long> {[m
+ [m
+[32m+[m[32m    // Existing instructor/admin queries[m
+     List<Course> findByStatus(CourseStatus status);[m
+ [m
+     List<Course> findByInstructorId(Long instructorId);[m
+[36m@@ -16,4 +21,20 @@[m [mpublic interface CourseRepository extends JpaRepository<Course, Long> {[m
+     List<Course> findByFree(boolean free);[m
+ [m
+     List<Course> findByTitleContainingIgnoreCase(String keyword);[m
+[31m-}[m
+\ No newline at end of file[m
+[32m+[m
+[32m+[m[32m    // Student course discovery[m
+[32m+[m[32m    List<Course> findByStatusAndTitleContainingIgnoreCase([m
+[32m+[m[32m            CourseStatus status, String keyword);[m
+[32m+[m
+[32m+[m[32m    List<Course> findByStatusAndSubjectId([m
+[32m+[m[32m            CourseStatus status, Long subjectId);[m
+[32m+[m
+[32m+[m[32m    List<Course> findByStatusAndLevel([m
+[32m+[m[32m            CourseStatus status, CourseLevel level);[m
+[32m+[m
+[32m+[m[32m    List<Course> findByStatusAndFree([m
+[32m+[m[32m            CourseStatus status, boolean free);[m
+[32m+[m
+[32m+[m[32m    Optional<Course> findByIdAndStatus([m
+[32m+[m[32m            Long id, CourseStatus status);[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/main/java/com/PeerNest/PeerNest/Service/CourseService.java b/src/main/java/com/PeerNest/PeerNest/Service/CourseService.java[m
+[1mindex a9a4dd6..67e7b49 100644[m
+[1m--- a/src/main/java/com/PeerNest/PeerNest/Service/CourseService.java[m
+[1m+++ b/src/main/java/com/PeerNest/PeerNest/Service/CourseService.java[m
+[36m@@ -31,7 +31,12 @@[m [mpublic interface CourseService {[m
+             Long id,[m
+             String instructorEmail[m
+     );[m
+[31m-    void publishCourse(Long courseId, String instructorEmail);[m
+[31m-[m
+[32m+[m[32m    void submitCourseForApproval(Long courseId, String instructorEmail);[m
+     void unpublishCourse(Long courseId, String instructorEmail);[m
+[32m+[m
+[32m+[m[32m    List<CourseResponse> getPendingCourses();[m
+[32m+[m
+[32m+[m[32m    void approveCourse(Long courseId);[m
+[32m+[m
+[32m+[m[32m    void rejectCourse(Long courseId);[m
+ }[m
+\ No newline at end of file[m
+[1mdiff --git a/src/main/java/com/PeerNest/PeerNest/Service/StudentCourseService.java b/src/main/java/com/PeerNest/PeerNest/Service/StudentCourseService.java[m
+[1mindex 8b6367a..33c36df 100644[m
+[1m--- a/src/main/java/com/PeerNest/PeerNest/Service/StudentCourseService.java[m
+[1m+++ b/src/main/java/com/PeerNest/PeerNest/Service/StudentCourseService.java[m
+[36m@@ -1,7 +1,9 @@[m
+[32m+[m
+ package com.PeerNest.PeerNest.Service;[m
+ [m
+ import com.PeerNest.PeerNest.Dto.EnrollmentResponse;[m
+ import com.PeerNest.PeerNest.Dto.StudentCourseResponse;[m
+[32m+[m[32mimport com.PeerNest.PeerNest.Entity.CourseLevel;[m
+ [m
+ import java.util.List;[m
+ [m
+[36m@@ -13,12 +15,13 @@[m [mpublic interface StudentCourseService {[m
+ [m
+     List<StudentCourseResponse> searchCourses(String keyword);[m
+ [m
+[31m-    EnrollmentResponse enroll([m
+[31m-            Long courseId,[m
+[31m-            String studentEmail[m
+[31m-    );[m
+[32m+[m[32m    List<StudentCourseResponse> getCoursesBySubject(Long subjectId);[m
+[32m+[m
+[32m+[m[32m    List<StudentCourseResponse> getCoursesByLevel(CourseLevel level);[m
+[32m+[m
+[32m+[m[32m    List<StudentCourseResponse> getCoursesByFreeStatus(boolean free);[m
+[32m+[m
+[32m+[m[32m    EnrollmentResponse enroll(Long courseId, String studentEmail);[m
+ [m
+[31m-    List<EnrollmentResponse> getMyEnrollments([m
+[31m-            String studentEmail[m
+[31m-    );[m
+[31m-}[m
+\ No newline at end of file[m
+[32m+[m[32m    List<EnrollmentResponse> getMyEnrollments(String studentEmail);[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/main/java/com/PeerNest/PeerNest/Service/impl/CourseServiceImpl.java b/src/main/java/com/PeerNest/PeerNest/Service/impl/CourseServiceImpl.java[m
+[1mindex bc253f7..f315fce 100644[m
+[1m--- a/src/main/java/com/PeerNest/PeerNest/Service/impl/CourseServiceImpl.java[m
+[1m+++ b/src/main/java/com/PeerNest/PeerNest/Service/impl/CourseServiceImpl.java[m
+[36m@@ -226,19 +226,15 @@[m [mpublic class CourseServiceImpl implements CourseService {[m
+         );[m
+     }[m
+     @Override[m
+[31m-    public void publishCourse([m
+[32m+[m[32m    public void submitCourseForApproval([m
+             Long courseId,[m
+             String instructorEmail) {[m
+ [m
+         Course course = findCourse(courseId);[m
+ [m
+[31m-        verifyOwnership([m
+[31m-                course,[m
+[31m-                instructorEmail[m
+[31m-        );[m
+[32m+[m[32m        verifyOwnership(course, instructorEmail);[m
+ [m
+         if (course.getStatus() == CourseStatus.PUBLISHED) {[m
+[31m-[m
+             throw new ResponseStatusException([m
+                     HttpStatus.BAD_REQUEST,[m
+                     "Course is already published"[m
+[36m@@ -246,22 +242,13 @@[m [mpublic class CourseServiceImpl implements CourseService {[m
+         }[m
+ [m
+         if (course.getStatus() == CourseStatus.PENDING_APPROVAL) {[m
+[31m-[m
+             throw new ResponseStatusException([m
+                     HttpStatus.BAD_REQUEST,[m
+[31m-                    "Course is waiting for approval"[m
+[32m+[m[32m                    "Course is already waiting for approval"[m
+             );[m
+         }[m
+ [m
+[31m-        if (course.getStatus() == CourseStatus.REJECTED) {[m
+[31m-[m
+[31m-            throw new ResponseStatusException([m
+[31m-                    HttpStatus.BAD_REQUEST,[m
+[31m-                    "Rejected course cannot be published directly"[m
+[31m-            );[m
+[31m-        }[m
+[31m-[m
+[31m-        course.setStatus(CourseStatus.PUBLISHED);[m
+[32m+[m[32m        course.setStatus(CourseStatus.PENDING_APPROVAL);[m
+ [m
+         courseRepository.save(course);[m
+     }[m
+[36m@@ -291,4 +278,42 @@[m [mpublic class CourseServiceImpl implements CourseService {[m
+ [m
+         courseRepository.save(course);[m
+     }[m
+[32m+[m[32m    @Override[m
+[32m+[m[32m    public List<CourseResponse> getPendingCourses() {[m
+[32m+[m[32m        return courseRepository[m
+[32m+[m[32m                .findByStatus(CourseStatus.PENDING_APPROVAL)[m
+[32m+[m[32m                .stream()[m
+[32m+[m[32m                .map(this::mapToResponse)[m
+[32m+[m[32m                .toList();[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    @Override[m
+[32m+[m[32m    public void approveCourse(Long courseId) {[m
+[32m+[m[32m        Course course = findCourse(courseId);[m
+[32m+[m
+[32m+[m[32m        if (course.getStatus() != CourseStatus.PENDING_APPROVAL) {[m
+[32m+[m[32m            throw new ResponseStatusException([m
+[32m+[m[32m                    HttpStatus.BAD_REQUEST,[m
+[32m+[m[32m                    "Only pending courses can be approved"[m
+[32m+[m[32m            );[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        course.setStatus(CourseStatus.PUBLISHED);[m
+[32m+[m[32m        courseRepository.save(course);[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    @Override[m
+[32m+[m[32m    public void rejectCourse(Long courseId) {[m
+[32m+[m[32m        Course course = findCourse(courseId);[m
+[32m+[m
+[32m+[m[32m        if (course.getStatus() != CourseStatus.PENDING_APPROVAL) {[m
+[32m+[m[32m            throw new ResponseStatusException([m
+[32m+[m[32m                    HttpStatus.BAD_REQUEST,[m
+[32m+[m[32m                    "Only pending courses can be rejected"[m
+[32m+[m[32m            );[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        course.setStatus(CourseStatus.REJECTED);[m
+[32m+[m[32m        courseRepository.save(course);[m
+[32m+[m[32m    }[m
+ }[m
+\ No newline at end of file[m
+[1mdiff --git a/src/main/java/com/PeerNest/PeerNest/Service/impl/StudentCourseServiceImpl.java b/src/main/java/com/PeerNest/PeerNest/Service/impl/StudentCourseServiceImpl.java[m
+[1mindex 34e159a..0628707 100644[m
+[1m--- a/src/main/java/com/PeerNest/PeerNest/Service/impl/StudentCourseServiceImpl.java[m
+[1m+++ b/src/main/java/com/PeerNest/PeerNest/Service/impl/StudentCourseServiceImpl.java[m
+[36m@@ -1,3 +1,4 @@[m
+[32m+[m
+ package com.PeerNest.PeerNest.Service.impl;[m
+ [m
+ import com.PeerNest.PeerNest.Dto.EnrollmentResponse;[m
+[36m@@ -8,91 +9,112 @@[m [mimport com.PeerNest.PeerNest.Repository.EnrollmentRepository;[m
+ import com.PeerNest.PeerNest.Repository.UserRepository;[m
+ import com.PeerNest.PeerNest.Service.StudentCourseService;[m
+ import lombok.RequiredArgsConstructor;[m
+[32m+[m[32mimport org.springframework.http.HttpStatus;[m
+ import org.springframework.stereotype.Service;[m
+[32m+[m[32mimport org.springframework.transaction.annotation.Transactional;[m
+[32m+[m[32mimport org.springframework.web.server.ResponseStatusException;[m
+ [m
+ import java.time.LocalDateTime;[m
+ import java.util.List;[m
+ [m
+ @Service[m
+ @RequiredArgsConstructor[m
+[31m-public class StudentCourseServiceImpl[m
+[31m-        implements StudentCourseService {[m
+[32m+[m[32m@Transactional(readOnly = true)[m
+[32m+[m[32mpublic class StudentCourseServiceImpl implements StudentCourseService {[m
+ [m
+     private final CourseRepository courseRepository;[m
+     private final EnrollmentRepository enrollmentRepository;[m
+     private final UserRepository userRepository;[m
+ [m
+[32m+[m[32m    // Get all published courses[m
+     @Override[m
+     public List<StudentCourseResponse> getPublishedCourses() {[m
+[31m-[m
+[31m-        return courseRepository[m
+[31m-                .findByStatus(CourseStatus.PUBLISHED)[m
+[32m+[m[32m        return courseRepository.findByStatus(CourseStatus.PUBLISHED)[m
+                 .stream()[m
+                 .map(this::mapToResponse)[m
+                 .toList();[m
+     }[m
+ [m
+[32m+[m[32m    // Get one published course[m
+     @Override[m
+[31m-    public StudentCourseResponse getCourseById([m
+[31m-            Long courseId) {[m
+[31m-[m
+[32m+[m[32m    public StudentCourseResponse getCourseById(Long courseId) {[m
+         Course course = courseRepository[m
+[31m-                .findById(courseId)[m
+[31m-                .orElseThrow(() ->[m
+[31m-                        new RuntimeException("Course not found"));[m
+[31m-[m
+[31m-        if (course.getStatus() != CourseStatus.PUBLISHED) {[m
+[31m-            throw new RuntimeException([m
+[31m-                    "Course is not available"[m
+[31m-            );[m
+[31m-        }[m
+[32m+[m[32m                .findByIdAndStatus(courseId, CourseStatus.PUBLISHED)[m
+[32m+[m[32m                .orElseThrow(() -> new ResponseStatusException([m
+[32m+[m[32m                        HttpStatus.NOT_FOUND,[m
+[32m+[m[32m                        "Published course not found"));[m
+ [m
+         return mapToResponse(course);[m
+     }[m
+ [m
+[32m+[m[32m    // Search published courses by title[m
+     @Override[m
+[31m-    public List<StudentCourseResponse> searchCourses([m
+[31m-            String keyword) {[m
+[32m+[m[32m    public List<StudentCourseResponse> searchCourses(String keyword) {[m
+[32m+[m[32m        if (keyword == null || keyword.isBlank()) {[m
+[32m+[m[32m            throw new ResponseStatusException([m
+[32m+[m[32m                    HttpStatus.BAD_REQUEST,[m
+[32m+[m[32m                    "Search keyword cannot be empty");[m
+[32m+[m[32m        }[m
+ [m
+         return courseRepository[m
+[31m-                .findByTitleContainingIgnoreCase(keyword)[m
+[32m+[m[32m                .findByStatusAndTitleContainingIgnoreCase([m
+[32m+[m[32m                        CourseStatus.PUBLISHED, keyword.trim())[m
+                 .stream()[m
+[31m-                .filter(course ->[m
+[31m-                        course.getStatus()[m
+[31m-                                == CourseStatus.PUBLISHED)[m
+                 .map(this::mapToResponse)[m
+                 .toList();[m
+     }[m
+ [m
+[32m+[m[32m    // Filter by subject ID[m
+     @Override[m
+[31m-    public EnrollmentResponse enroll([m
+[31m-            Long courseId,[m
+[31m-            String studentEmail) {[m
+[32m+[m[32m    public List<StudentCourseResponse> getCoursesBySubject(Long subjectId) {[m
+[32m+[m[32m        return courseRepository[m
+[32m+[m[32m                .findByStatusAndSubjectId([m
+[32m+[m[32m                        CourseStatus.PUBLISHED, subjectId)[m
+[32m+[m[32m                .stream()[m
+[32m+[m[32m                .map(this::mapToResponse)[m
+[32m+[m[32m                .toList();[m
+[32m+[m[32m    }[m
+ [m
+[31m-        User student = userRepository[m
+[31m-                .findByEmail(studentEmail)[m
+[31m-                .orElseThrow(() ->[m
+[31m-                        new RuntimeException("Student not found"));[m
+[32m+[m[32m    // Filter by course level[m
+[32m+[m[32m    @Override[m
+[32m+[m[32m    public List<StudentCourseResponse> getCoursesByLevel(CourseLevel level) {[m
+[32m+[m[32m        return courseRepository[m
+[32m+[m[32m                .findByStatusAndLevel(CourseStatus.PUBLISHED, level)[m
+[32m+[m[32m                .stream()[m
+[32m+[m[32m                .map(this::mapToResponse)[m
+[32m+[m[32m                .toList();[m
+[32m+[m[32m    }[m
+ [m
+[31m-        Course course = courseRepository[m
+[31m-                .findById(courseId)[m
+[31m-                .orElseThrow(() ->[m
+[31m-                        new RuntimeException("Course not found"));[m
+[31m-[m
+[31m-        if (course.getStatus() != CourseStatus.PUBLISHED) {[m
+[31m-            throw new RuntimeException([m
+[31m-                    "You cannot enroll in this course"[m
+[31m-            );[m
+[31m-        }[m
+[32m+[m[32m    // Filter by free or paid status[m
+[32m+[m[32m    @Override[m
+[32m+[m[32m    public List<StudentCourseResponse> getCoursesByFreeStatus(boolean free) {[m
+[32m+[m[32m        return courseRepository[m
+[32m+[m[32m                .findByStatusAndFree(CourseStatus.PUBLISHED, free)[m
+[32m+[m[32m                .stream()[m
+[32m+[m[32m                .map(this::mapToResponse)[m
+[32m+[m[32m                .toList();[m
+[32m+[m[32m    }[m
+ [m
+[31m-        if (enrollmentRepository[m
+[31m-                .existsByStudentIdAndCourseId([m
+[31m-                        student.getId(),[m
+[31m-                        courseId)) {[m
+[32m+[m[32m    // Enroll a student in a published course[m
+[32m+[m[32m    @Override[m
+[32m+[m[32m    @Transactional[m
+[32m+[m[32m    public EnrollmentResponse enroll(Long courseId, String studentEmail) {[m
+ [m
+[31m-            throw new RuntimeException([m
+[31m-                    "Already enrolled in this course"[m
+[31m-            );[m
+[32m+[m[32m        User student = userRepository.findByEmail(studentEmail)[m
+[32m+[m[32m                .orElseThrow(() -> new ResponseStatusException([m
+[32m+[m[32m                        HttpStatus.NOT_FOUND, "Student not found"));[m
+[32m+[m
+[32m+[m[32m        Course course = courseRepository[m
+[32m+[m[32m                .findByIdAndStatus(courseId, CourseStatus.PUBLISHED)[m
+[32m+[m[32m                .orElseThrow(() -> new ResponseStatusException([m
+[32m+[m[32m                        HttpStatus.NOT_FOUND,[m
+[32m+[m[32m                        "Published course not found"));[m
+[32m+[m
+[32m+[m[32m        if (enrollmentRepository.existsByStudentIdAndCourseId([m
+[32m+[m[32m                student.getId(), courseId)) {[m
+[32m+[m[32m            throw new ResponseStatusException([m
+[32m+[m[32m                    HttpStatus.CONFLICT,[m
+[32m+[m[32m                    "Already enrolled in this course");[m
+         }[m
+ [m
+         Enrollment enrollment = Enrollment.builder()[m
+[36m@@ -101,8 +123,7 @@[m [mpublic class StudentCourseServiceImpl[m
+                 .enrolledAt(LocalDateTime.now())[m
+                 .build();[m
+ [m
+[31m-        Enrollment saved =[m
+[31m-                enrollmentRepository.save(enrollment);[m
+[32m+[m[32m        Enrollment saved = enrollmentRepository.save(enrollment);[m
+ [m
+         return new EnrollmentResponse([m
+                 saved.getId(),[m
+[36m@@ -113,35 +134,28 @@[m [mpublic class StudentCourseServiceImpl[m
+         );[m
+     }[m
+ [m
+[32m+[m[32m    // Get the current student's enrollments[m
+     @Override[m
+[31m-    public List<EnrollmentResponse> getMyEnrollments([m
+[31m-            String studentEmail) {[m
+[32m+[m[32m    public List<EnrollmentResponse> getMyEnrollments(String studentEmail) {[m
+ [m
+[31m-        User student = userRepository[m
+[31m-                .findByEmail(studentEmail)[m
+[31m-                .orElseThrow(() ->[m
+[31m-                        new RuntimeException("Student not found"));[m
+[32m+[m[32m        User student = userRepository.findByEmail(studentEmail)[m
+[32m+[m[32m                .orElseThrow(() -> new ResponseStatusException([m
+[32m+[m[32m                        HttpStatus.NOT_FOUND, "Student not found"));[m
+ [m
+[31m-        return enrollmentRepository[m
+[31m-                .findByStudentId(student.getId())[m
+[32m+[m[32m        return enrollmentRepository.findByStudentId(student.getId())[m
+                 .stream()[m
+[31m-                .map(enrollment ->[m
+[31m-                        new EnrollmentResponse([m
+[31m-                                enrollment.getId(),[m
+[31m-                                enrollment.getCourse().getId(),[m
+[31m-                                enrollment.getCourse().getTitle(),[m
+[31m-                                enrollment.getCourse()[m
+[31m-                                        .getInstructor()[m
+[31m-                                        .getName(),[m
+[31m-                                enrollment.getEnrolledAt()[m
+[31m-                        )[m
+[31m-                )[m
+[32m+[m[32m                .map(enrollment -> new EnrollmentResponse([m
+[32m+[m[32m                        enrollment.getId(),[m
+[32m+[m[32m                        enrollment.getCourse().getId(),[m
+[32m+[m[32m                        enrollment.getCourse().getTitle(),[m
+[32m+[m[32m                        enrollment.getCourse().getInstructor().getName(),[m
+[32m+[m[32m                        enrollment.getEnrolledAt()[m
+[32m+[m[32m                ))[m
+                 .toList();[m
+     }[m
+ [m
+[31m-    private StudentCourseResponse mapToResponse([m
+[31m-            Course course) {[m
+[31m-[m
+[32m+[m[32m    // Map entity to student-facing DTO[m
+[32m+[m[32m    private StudentCourseResponse mapToResponse(Course course) {[m
+         return new StudentCourseResponse([m
+                 course.getId(),[m
+                 course.getTitle(),[m
+[36m@@ -154,4 +168,4 @@[m [mpublic class StudentCourseServiceImpl[m
+                 course.getThumbnailUrl()[m
+         );[m
+     }[m
+[31m-}[m
+\ No newline at end of file[m
+[32m+[m[32m}[m
