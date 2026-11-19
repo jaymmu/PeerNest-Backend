@@ -126,6 +126,11 @@ public class SecurityConfig {
                         ).hasRole("ADMIN")
 
 
+                        .requestMatchers("/api/mentorship/student/**").hasRole("STUDENT")
+                        .requestMatchers("/api/mentorship/instructor/**").hasRole("INSTRUCTOR")
+
+
+
                         // ----------------------------------
                         // STATIC FRONTEND
                         // ----------------------------------
@@ -137,6 +142,12 @@ public class SecurityConfig {
                                 "/style.css",
                                 "/favicon.ico",
                                 "/error"
+                        ).permitAll()
+                        .requestMatchers(
+                                "/api/auth/register",
+                                "/api/auth/login",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password"
                         ).permitAll()
 
 
