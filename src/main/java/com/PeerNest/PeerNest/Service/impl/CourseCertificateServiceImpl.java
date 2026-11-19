@@ -1,9 +1,16 @@
 
 package com.PeerNest.PeerNest.Service.impl;
 
+import com.PeerNest.PeerNest.Dto.CertificateVerificationResponse;
 import com.PeerNest.PeerNest.Entity.*;
 import com.PeerNest.PeerNest.Repository.*;
 import com.PeerNest.PeerNest.Service.CourseCertificateService;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
 
 import lombok.RequiredArgsConstructor;
 
@@ -13,7 +20,9 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +30,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.UUID;
 
 @Service
@@ -33,6 +44,9 @@ public class CourseCertificateServiceImpl
     private final EnrollmentRepository enrollmentRepository;
     private final LectureProgressRepository progressRepository;
     private final CourseCertificateRepository certificateRepository;
+
+    @Value("${app.certificate-verification-url:http://localhost:8081/api/certificates/verify/}")
+    private String verificationUrl;
 
     @Override
     @Transactional
@@ -60,14 +74,14 @@ public class CourseCertificateServiceImpl
             );
         }
 
-        // Calculate total lectures in the course.
+        // Calculate total lectures.
         int totalLectures = course.getSections()
                 .stream()
                 .mapToInt(section ->
                         section.getLectures().size())
                 .sum();
 
-        // Calculate completed lectures for this student.
+        // Calculate completed lectures.
         long completedLectures =
                 progressRepository
                         .countByStudentIdAndLectureSectionCourseIdAndCompleted(
@@ -84,7 +98,7 @@ public class CourseCertificateServiceImpl
             );
         }
 
-        // Reuse an existing certificate if already generated.
+        // Reuse existing certificate.
         CourseCertificate certificate =
                 certificateRepository
                         .findByStudentIdAndCourseId(
@@ -115,6 +129,37 @@ public class CourseCertificateServiceImpl
         return generatePdf(certificate);
     }
 
+    // Public certificate verification.
+    @Override
+    @Transactional(readOnly = true)
+    public CertificateVerificationResponse verifyCertificate(
+            String certificateNumber) {
+
+        return certificateRepository
+                .findByCertificateNumber(certificateNumber)
+                .map(certificate ->
+                        new CertificateVerificationResponse(
+                                true,
+                                certificate.getCertificateNumber(),
+                                certificate.getStudent().getName(),
+                                certificate.getCourse().getTitle(),
+                                certificate.getIssueDate(),
+                                "This certificate is valid and was issued by PeerNest."
+                        )
+                )
+                .orElseGet(() ->
+                        new CertificateVerificationResponse(
+                                false,
+                                certificateNumber,
+                                null,
+                                null,
+                                null,
+                                "Invalid certificate. No matching record was found."
+                        )
+                );
+    }
+
+    // Generate certificate PDF with QR code.
     private byte[] generatePdf(
             CourseCertificate certificate) {
 
@@ -139,68 +184,48 @@ public class CourseCertificateServiceImpl
             try (PDPageContentStream content =
                          new PDPageContentStream(document, page)) {
 
-                // Outer border
+                // Outer border.
                 content.setLineWidth(3);
                 content.addRect(25, 25, 792, 545);
                 content.stroke();
 
-                // Inner border
+                // Inner border.
                 content.setLineWidth(1);
                 content.addRect(35, 35, 772, 525);
                 content.stroke();
 
                 drawCenteredText(
-                        content,
-                        bold,
-                        30,
-                        "PeerNest",
-                        595,
-                        500
+                        content, bold, 30,
+                        "PeerNest", 842, 500
                 );
 
                 drawCenteredText(
-                        content,
-                        bold,
-                        32,
-                        "CERTIFICATE OF COMPLETION",
-                        595,
-                        420
+                        content, bold, 32,
+                        "CERTIFICATE OF COMPLETION", 842, 420
                 );
 
                 drawCenteredText(
-                        content,
-                        regular,
-                        17,
+                        content, regular, 17,
                         "This certificate is proudly presented to",
-                        595,
-                        355
+                        842, 355
                 );
 
                 drawCenteredText(
-                        content,
-                        bold,
-                        28,
+                        content, bold, 28,
                         certificate.getStudent().getName(),
-                        595,
-                        305
+                        842, 305
                 );
 
                 drawCenteredText(
-                        content,
-                        regular,
-                        17,
+                        content, regular, 17,
                         "for successfully completing the course",
-                        595,
-                        260
+                        842, 260
                 );
 
                 drawCenteredText(
-                        content,
-                        bold,
-                        24,
+                        content, bold, 24,
                         certificate.getCourse().getTitle(),
-                        595,
-                        215
+                        842, 215
                 );
 
                 String date = certificate.getIssueDate()
@@ -209,42 +234,86 @@ public class CourseCertificateServiceImpl
                         ));
 
                 drawCenteredText(
-                        content,
-                        regular,
-                        13,
+                        content, regular, 13,
                         "Completion Date: " + date,
-                        595,
-                        145
+                        842, 145
                 );
 
                 drawCenteredText(
-                        content,
-                        regular,
-                        11,
+                        content, regular, 11,
                         "Certificate ID: " +
                                 certificate.getCertificateNumber(),
-                        595,
-                        105
+                        842, 105
                 );
 
                 drawCenteredText(
-                        content,
-                        bold,
-                        13,
+                        content, bold, 13,
                         "PeerNest Learning Platform",
-                        595,
-                        65
+                        842, 65
                 );
+
+                // Generate QR code.
+                byte[] qrBytes = generateQrCode(
+                        verificationUrl +
+                                certificate.getCertificateNumber()
+                );
+
+                PDImageXObject qrImage =
+                        PDImageXObject.createFromByteArray(
+                                document,
+                                qrBytes,
+                                "certificate-qr"
+                        );
+
+                // Draw QR code in bottom-right corner.
+                content.drawImage(qrImage, 715, 65, 85, 85);
+
+                // QR label.
+                content.beginText();
+                content.setFont(regular, 9);
+                content.newLineAtOffset(710, 52);
+                content.showText("Scan to verify");
+                content.endText();
             }
 
             document.save(output);
             return output.toByteArray();
 
-        } catch (IOException exception) {
+        } catch (Exception exception) {
             throw new RuntimeException(
                     "Unable to generate certificate PDF",
                     exception
             );
+        }
+    }
+
+    // Create QR image containing the verification URL.
+    private byte[] generateQrCode(String text)
+            throws Exception {
+
+        QRCodeWriter qrCodeWriter = new QRCodeWriter();
+
+        Map<EncodeHintType, Object> hints = new HashMap<>();
+        hints.put(EncodeHintType.MARGIN, 1);
+
+        BitMatrix bitMatrix = qrCodeWriter.encode(
+                text,
+                BarcodeFormat.QR_CODE,
+                250,
+                250,
+                hints
+        );
+
+        try (ByteArrayOutputStream output =
+                     new ByteArrayOutputStream()) {
+
+            MatrixToImageWriter.writeToStream(
+                    bitMatrix,
+                    "PNG",
+                    output
+            );
+
+            return output.toByteArray();
         }
     }
 
@@ -272,7 +341,6 @@ public class CourseCertificateServiceImpl
 
     private String makePdfSafe(String value) {
 
-        // Standard PDF fonts support limited character sets.
         return value.replaceAll("[^\\x20-\\xFF]", "?");
     }
 }

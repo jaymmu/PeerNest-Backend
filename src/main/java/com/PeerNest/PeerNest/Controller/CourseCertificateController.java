@@ -2,6 +2,7 @@
 package com.PeerNest.PeerNest.Controller;
 
 import com.PeerNest.PeerNest.Service.CourseCertificateService;
+import com.PeerNest.PeerNest.Dto.CertificateVerificationResponse;
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,6 +20,7 @@ public class CourseCertificateController {
 
     private final CourseCertificateService certificateService;
 
+    // Student certificate download.
     @GetMapping("/course/{courseId}/download")
     public ResponseEntity<byte[]> downloadCertificate(
             @PathVariable Long courseId,
@@ -37,5 +39,19 @@ public class CourseCertificateController {
                 .contentType(MediaType.APPLICATION_PDF)
                 .contentLength(pdf.length)
                 .body(pdf);
+    }
+
+    // Public certificate verification.
+    @GetMapping("/verify/{certificateNumber}")
+    public ResponseEntity<CertificateVerificationResponse>
+    verifyCertificate(
+            @PathVariable String certificateNumber) {
+
+        CertificateVerificationResponse response =
+                certificateService.verifyCertificate(
+                        certificateNumber
+                );
+
+        return ResponseEntity.ok(response);
     }
 }

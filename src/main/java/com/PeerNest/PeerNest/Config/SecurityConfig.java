@@ -128,6 +128,13 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/mentorship/student/**").hasRole("STUDENT")
                         .requestMatchers("/api/mentorship/instructor/**").hasRole("INSTRUCTOR")
+                        .requestMatchers(
+                                "/api/certificates/verify/**"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                "/api/certificates/**"
+                        ).hasRole("STUDENT")
 
 
 
