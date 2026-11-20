@@ -1,3 +1,4 @@
+
 package com.PeerNest.PeerNest.Security;
 
 import com.PeerNest.PeerNest.Entity.User;
@@ -12,11 +13,8 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-
 import org.springframework.security.core.context.SecurityContextHolder;
-
 import org.springframework.stereotype.Component;
-
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -24,14 +22,10 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-public class JwtAuthenticationFilter
-        extends OncePerRequestFilter {
-
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-
     private final UserRepository userRepository;
-
 
     @Override
     protected void doFilterInternal(
@@ -40,147 +34,45 @@ public class JwtAuthenticationFilter
             FilterChain filterChain
     ) throws ServletException, IOException {
 
+        String authHeader = request.getHeader("Authorization");
 
-        System.out.println("====================================");
-
-        System.out.println(
-                "Request: " +
-                        request.getMethod() +
-                        " " +
-                        request.getRequestURI()
-        );
-
-
-        String authHeader =
-                request.getHeader("Authorization");
-
-
-        System.out.println(
-                "Authorization Header: " +
-                        authHeader
-        );
-
-
-        // ==========================================
-        // NO JWT
-        // ==========================================
-
-        if (
-                authHeader == null ||
-                        !authHeader.startsWith("Bearer ")
-        ) {
-
-            System.out.println(
-                    "No Bearer token found."
-            );
-
-            filterChain.doFilter(
-                    request,
-                    response
-            );
-
+        // No JWT token provided
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
             return;
         }
 
-
-        // ==========================================
-        // EXTRACT TOKEN
-        // ==========================================
-
-        String token =
-                authHeader.substring(7);
-
+        // Extract JWT token
+        String token = authHeader.substring(7);
 
         try {
 
-
-            // ==========================================
-            // VALIDATE JWT
-            // ==========================================
-
+            // Validate JWT
             if (!jwtService.isTokenValid(token)) {
-
-                System.out.println(
-                        "JWT is INVALID."
-                );
-
-                filterChain.doFilter(
-                        request,
-                        response
-                );
-
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
                 return;
             }
 
+            // Extract email from JWT
+            String email = jwtService.extractEmail(token);
 
-            System.out.println(
-                    "JWT is VALID."
-            );
-
-
-            // ==========================================
-            // GET EMAIL
-            // ==========================================
-
-            String email =
-                    jwtService.extractEmail(token);
-
-
-            System.out.println(
-                    "Email from JWT: " +
-                            email
-            );
-
-
-            // ==========================================
-            // FIND USER
-            // ==========================================
-
-            User user =
-                    userRepository
-                            .findByEmail(email)
-                            .orElse(null);
-
+            // Find user
+            User user = userRepository.findByEmail(email).orElse(null);
 
             if (user == null) {
-
-                System.out.println(
-                        "User not found."
-                );
-
-                filterChain.doFilter(
-                        request,
-                        response
-                );
-
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
                 return;
             }
 
-
-            // ==========================================
-            // ROLE
-            // ==========================================
-
-            String role =
-                    user.getRole().name();
-
-
-            System.out.println(
-                    "User role: " +
-                            role
-            );
-
+            // Get user role
+            String role = user.getRole().name();
 
             SimpleGrantedAuthority authority =
-                    new SimpleGrantedAuthority(
-                            "ROLE_" + role
-                    );
+                    new SimpleGrantedAuthority("ROLE_" + role);
 
-
-            // ==========================================
-            // CREATE AUTHENTICATION
-            // ==========================================
-
+            // Create authentication
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
                             user.getEmail(),
@@ -188,38 +80,17 @@ public class JwtAuthenticationFilter
                             List.of(authority)
                     );
 
-
-            SecurityContextHolder
-                    .getContext()
-                    .setAuthentication(
-                            authentication
-                    );
-
-
-            System.out.println(
-                    "SecurityContext authentication set."
-            );
-
+            // Set authentication in SecurityContext
+            SecurityContextHolder.getContext()
+                    .setAuthentication(authentication);
 
         } catch (Exception e) {
 
-            System.out.println(
-                    "JWT processing error: " +
-                            e.getMessage()
-            );
-
-            SecurityContextHolder
-                    .clearContext();
+            // Clear authentication if JWT processing fails
+            SecurityContextHolder.clearContext();
         }
 
-
-        // ==========================================
-        // CONTINUE
-        // ==========================================
-
-        filterChain.doFilter(
-                request,
-                response
-        );
+        // Continue request
+        filterChain.doFilter(request, response);
     }
 }

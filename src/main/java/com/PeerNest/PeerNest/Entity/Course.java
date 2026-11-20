@@ -1,4 +1,6 @@
+
 package com.PeerNest.PeerNest.Entity;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -34,7 +36,8 @@ public class Course {
     private CourseLevel level;
 
     @Enumerated(EnumType.STRING)
-    private CourseStatus status;
+    @Builder.Default
+    private CourseStatus status = CourseStatus.DRAFT;
 
     // Course belongs to one Subject
     @ManyToOne
@@ -46,6 +49,7 @@ public class Course {
     @JoinColumn(name = "instructor_id", nullable = false)
     private User instructor;
 
+    // Course contains multiple Sections
     @OneToMany(
             mappedBy = "course",
             cascade = CascadeType.ALL,
@@ -53,6 +57,4 @@ public class Course {
     )
     @Builder.Default
     private List<Section> sections = new ArrayList<>();
-
-
 }

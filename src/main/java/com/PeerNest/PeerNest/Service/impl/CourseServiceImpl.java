@@ -1,3 +1,4 @@
+
 package com.PeerNest.PeerNest.Service.impl;
 
 import com.PeerNest.PeerNest.Dto.CourseRequest;
@@ -10,20 +11,28 @@ import com.PeerNest.PeerNest.Repository.CourseRepository;
 import com.PeerNest.PeerNest.Repository.SubjectRepository;
 import com.PeerNest.PeerNest.Repository.UserRepository;
 import com.PeerNest.PeerNest.Service.CourseService;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class CourseServiceImpl implements CourseService {
 
     private final CourseRepository courseRepository;
     private final SubjectRepository subjectRepository;
     private final UserRepository userRepository;
+
+    // ==========================================
+    // CREATE COURSE
+    // ==========================================
 
     @Override
     public CourseResponse createCourse(
@@ -32,19 +41,17 @@ public class CourseServiceImpl implements CourseService {
 
         User instructor = userRepository
                 .findByEmail(instructorEmail)
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "Instructor not found"
-                        ));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Instructor not found"
+                ));
 
         Subject subject = subjectRepository
                 .findById(request.getSubjectId())
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "Subject not found"
-                        ));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Subject not found"
+                ));
 
         validatePrice(request);
 
@@ -59,23 +66,24 @@ public class CourseServiceImpl implements CourseService {
                 .instructor(instructor)
                 .build();
 
-        Course savedCourse =
-                courseRepository.save(course);
-
-        return mapToResponse(savedCourse);
+        return mapToResponse(courseRepository.save(course));
     }
 
+    // ==========================================
+    // GET INSTRUCTOR COURSES
+    // ==========================================
+
     @Override
+    @Transactional(readOnly = true)
     public List<CourseResponse> getInstructorCourses(
             String instructorEmail) {
 
         User instructor = userRepository
                 .findByEmail(instructorEmail)
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "Instructor not found"
-                        ));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Instructor not found"
+                ));
 
         return courseRepository
                 .findByInstructorId(instructor.getId())
@@ -84,20 +92,26 @@ public class CourseServiceImpl implements CourseService {
                 .toList();
     }
 
+    // ==========================================
+    // GET COURSE BY ID
+    // ==========================================
+
     @Override
+    @Transactional(readOnly = true)
     public CourseResponse getCourseById(
             Long id,
             String instructorEmail) {
 
         Course course = findCourse(id);
 
-        verifyOwnership(
-                course,
-                instructorEmail
-        );
+        verifyOwnership(course, instructorEmail);
 
         return mapToResponse(course);
     }
+
+    // ==========================================
+    // UPDATE COURSE
+    // ==========================================
 
     @Override
     public CourseResponse updateCourse(
@@ -107,52 +121,44 @@ public class CourseServiceImpl implements CourseService {
 
         Course course = findCourse(id);
 
-        verifyOwnership(
-                course,
-                instructorEmail
-        );
+        verifyOwnership(course, instructorEmail);
+
+        if (course.getStatus() == CourseStatus.PENDING_APPROVAL ||
+                course.getStatus() == CourseStatus.PUBLISHED) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "You cannot edit a course that is pending approval or published"
+            );
+        }
 
         Subject subject = subjectRepository
                 .findById(request.getSubjectId())
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "Subject not found"
-                        ));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Subject not found"
+                ));
 
         validatePrice(request);
 
-        course.setTitle(
-                request.getTitle().trim()
-        );
+        course.setTitle(request.getTitle().trim());
+        course.setDescription(request.getDescription().trim());
+        course.setPrice(request.isFree() ? 0 : request.getPrice());
+        course.setFree(request.isFree());
+        course.setLevel(request.getLevel());
+        course.setSubject(subject);
 
-        course.setDescription(
-                request.getDescription().trim()
-        );
+        // A rejected course returns to DRAFT after editing.
+        if (course.getStatus() == CourseStatus.REJECTED) {
+            course.setStatus(CourseStatus.DRAFT);
+        }
 
-        course.setPrice(
-                request.isFree()
-                        ? 0
-                        : request.getPrice()
-        );
-
-        course.setFree(
-                request.isFree()
-        );
-
-        course.setLevel(
-                request.getLevel()
-        );
-
-        course.setSubject(
-                subject
-        );
-
-        Course updatedCourse =
-                courseRepository.save(course);
-
-        return mapToResponse(updatedCourse);
+        return mapToResponse(courseRepository.save(course));
     }
+
+    // ==========================================
+    // DELETE COURSE
+    // ==========================================
 
     @Override
     public void deleteCourse(
@@ -161,70 +167,24 @@ public class CourseServiceImpl implements CourseService {
 
         Course course = findCourse(id);
 
-        verifyOwnership(
-                course,
-                instructorEmail
-        );
+        verifyOwnership(course, instructorEmail);
+
+        if (course.getStatus() == CourseStatus.PUBLISHED ||
+                course.getStatus() == CourseStatus.PENDING_APPROVAL) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Published or pending courses cannot be deleted"
+            );
+        }
 
         courseRepository.delete(course);
     }
 
-    private Course findCourse(Long id) {
+    // ==========================================
+    // SUBMIT COURSE FOR ADMIN APPROVAL
+    // ==========================================
 
-        return courseRepository
-                .findById(id)
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "Course not found"
-                        ));
-    }
-
-    private void verifyOwnership(
-            Course course,
-            String instructorEmail) {
-
-        if (course.getInstructor() == null ||
-                course.getInstructor().getEmail() == null ||
-                !course.getInstructor()
-                        .getEmail()
-                        .equalsIgnoreCase(instructorEmail)) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "You can only access your own courses"
-            );
-        }
-    }
-
-    private void validatePrice(
-            CourseRequest request) {
-
-        if (!request.isFree() &&
-                request.getPrice() <= 0) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Paid course price must be greater than 0"
-            );
-        }
-    }
-
-    private CourseResponse mapToResponse(
-            Course course) {
-
-        return new CourseResponse(
-                course.getId(),
-                course.getTitle(),
-                course.getDescription(),
-                course.getPrice(),
-                course.isFree(),
-                course.getLevel(),
-                course.getStatus(),
-                course.getSubject().getName(),
-                course.getInstructor().getName()
-        );
-    }
     @Override
     public void submitCourseForApproval(
             Long courseId,
@@ -248,11 +208,27 @@ public class CourseServiceImpl implements CourseService {
             );
         }
 
+        if (course.getTitle() == null ||
+                course.getTitle().isBlank() ||
+                course.getDescription() == null ||
+                course.getDescription().isBlank() ||
+                course.getSubject() == null ||
+                course.getLevel() == null) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Complete all course details before submitting"
+            );
+        }
+
         course.setStatus(CourseStatus.PENDING_APPROVAL);
 
         courseRepository.save(course);
     }
 
+    // ==========================================
+    // UNPUBLISH COURSE
+    // ==========================================
 
     @Override
     public void unpublishCourse(
@@ -261,13 +237,9 @@ public class CourseServiceImpl implements CourseService {
 
         Course course = findCourse(courseId);
 
-        verifyOwnership(
-                course,
-                instructorEmail
-        );
+        verifyOwnership(course, instructorEmail);
 
         if (course.getStatus() != CourseStatus.PUBLISHED) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Only published courses can be unpublished"
@@ -278,8 +250,15 @@ public class CourseServiceImpl implements CourseService {
 
         courseRepository.save(course);
     }
+
+    // ==========================================
+    // ADMIN: GET PENDING COURSES
+    // ==========================================
+
     @Override
+    @Transactional(readOnly = true)
     public List<CourseResponse> getPendingCourses() {
+
         return courseRepository
                 .findByStatus(CourseStatus.PENDING_APPROVAL)
                 .stream()
@@ -287,8 +266,13 @@ public class CourseServiceImpl implements CourseService {
                 .toList();
     }
 
+    // ==========================================
+    // ADMIN: APPROVE COURSE
+    // ==========================================
+
     @Override
     public void approveCourse(Long courseId) {
+
         Course course = findCourse(courseId);
 
         if (course.getStatus() != CourseStatus.PENDING_APPROVAL) {
@@ -299,11 +283,17 @@ public class CourseServiceImpl implements CourseService {
         }
 
         course.setStatus(CourseStatus.PUBLISHED);
+
         courseRepository.save(course);
     }
 
+    // ==========================================
+    // ADMIN: REJECT COURSE
+    // ==========================================
+
     @Override
     public void rejectCourse(Long courseId) {
+
         Course course = findCourse(courseId);
 
         if (course.getStatus() != CourseStatus.PENDING_APPROVAL) {
@@ -314,6 +304,82 @@ public class CourseServiceImpl implements CourseService {
         }
 
         course.setStatus(CourseStatus.REJECTED);
+
         courseRepository.save(course);
+    }
+
+    // ==========================================
+    // HELPER: FIND COURSE
+    // ==========================================
+
+    private Course findCourse(Long id) {
+
+        return courseRepository
+                .findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Course not found"
+                ));
+    }
+
+    // ==========================================
+    // HELPER: VERIFY COURSE OWNERSHIP
+    // ==========================================
+
+    private void verifyOwnership(
+            Course course,
+            String instructorEmail) {
+
+        if (course.getInstructor() == null ||
+                course.getInstructor().getEmail() == null ||
+                !course.getInstructor()
+                        .getEmail()
+                        .equalsIgnoreCase(instructorEmail)) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You can only access your own courses"
+            );
+        }
+    }
+
+    // ==========================================
+    // HELPER: VALIDATE PRICE
+    // ==========================================
+
+    private void validatePrice(CourseRequest request) {
+
+        if (!request.isFree() && request.getPrice() <= 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Paid course price must be greater than 0"
+            );
+        }
+
+        if (request.getPrice() < 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Course price cannot be negative"
+            );
+        }
+    }
+
+    // ==========================================
+    // HELPER: MAP ENTITY TO RESPONSE
+    // ==========================================
+
+    private CourseResponse mapToResponse(Course course) {
+
+        return new CourseResponse(
+                course.getId(),
+                course.getTitle(),
+                course.getDescription(),
+                course.getPrice(),
+                course.isFree(),
+                course.getLevel(),
+                course.getStatus(),
+                course.getSubject().getName(),
+                course.getInstructor().getName()
+        );
     }
 }
